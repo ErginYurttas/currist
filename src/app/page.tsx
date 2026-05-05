@@ -2,12 +2,24 @@
 
 import { useEffect, useMemo, useState } from "react";
 
-type StructureType = "building" | "floor" | "room";
+type StructureType = "project" | "building" | "block" | "floor" | "room";
 type SortMode = "alphabetical" | "created";
 type LoadType = "Pump" | "Fan" | "AHU" | "Manual";
 type PhaseType = "1P" | "3P";
 type PhaseLine = "R" | "S" | "T";
 type LoadCharacter = "Ohmic" | "Inductive" | "Capacitive";
+type PanelType = "MCC" | "SMDB" | "DB" | "LP" | "UPS DB";
+type PanelPhaseType = "1P" | "3P";
+
+type Panel = {
+  id: number;
+  name: string;
+  panelType: PanelType;
+  phaseType: PanelPhaseType;
+  structureId: number;
+  description?: string;
+  createdAt: number;
+};
 type ManualLoadType =
   | "Socket Outlet"
   | "Lighting Circuit"
@@ -47,12 +59,236 @@ type Load = {
   phaseType: PhaseType;
   phaseLine?: PhaseLine;
   roomId: number;
+  connectedPanelId?: number;
   createdAt: number;
   loadCharacter?: LoadCharacter;
   cosPhi?: number;
+  cableLengthM?: number;
 };
 
 const catalog: CatalogItem[] = [
+  {
+    loadType: "Pump",
+    brand: "Grundfos",
+    series: "ALPHA SOLAR",
+    model: "ALPHA SOLAR 15-75 130",
+    powerKw: 0.045,
+    phaseType: "1P",
+  },
+  {
+    loadType: "Pump",
+    brand: "Grundfos",
+    series: "ALPHA SOLAR",
+    model: "ALPHA SOLAR 25-75 130",
+    powerKw: 0.045,
+    phaseType: "1P",
+  },
+  {
+    loadType: "Pump",
+    brand: "Grundfos",
+    series: "ALPHA SOLAR",
+    model: "ALPHA SOLAR 25-145 180",
+    powerKw: 0.06,
+    phaseType: "1P",
+  },
+  {
+    loadType: "Pump",
+    brand: "Grundfos",
+    series: "ALPHA1",
+    model: "ALPHA1 32-80 180",
+    powerKw: 0.06,
+    phaseType: "1P",
+  },
+  {
+    loadType: "Pump",
+    brand: "Grundfos",
+    series: "ALPHA1",
+    model: "ALPHA1 32-60 180",
+    powerKw: 0.045,
+    phaseType: "1P",
+  },
+  {
+    loadType: "Pump",
+    brand: "Grundfos",
+    series: "ALPHA1",
+    model: "ALPHA1 32-40 180",
+    powerKw: 0.027,
+    phaseType: "1P",
+  },
+  {
+    loadType: "Pump",
+    brand: "Grundfos",
+    series: "ALPHA1",
+    model: "ALPHA1 25-80 180",
+    powerKw: 0.06,
+    phaseType: "1P",
+  },
+  {
+    loadType: "Pump",
+    brand: "Grundfos",
+    series: "ALPHA1",
+    model: "ALPHA1 25-80 130",
+    powerKw: 0.06,
+    phaseType: "1P",
+  },
+  {
+    loadType: "Pump",
+    brand: "Grundfos",
+    series: "ALPHA1",
+    model: "ALPHA1 25-60 180",
+    powerKw: 0.045,
+    phaseType: "1P",
+  },
+  {
+    loadType: "Pump",
+    brand: "Grundfos",
+    series: "ALPHA1",
+    model: "ALPHA1 25-60 130",
+    powerKw: 0.045,
+    phaseType: "1P",
+  },
+  {
+    loadType: "Pump",
+    brand: "Grundfos",
+    series: "ALPHA1",
+    model: "ALPHA1 25-40 180",
+    powerKw: 0.027,
+    phaseType: "1P",
+  },
+  {
+    loadType: "Pump",
+    brand: "Grundfos",
+    series: "ALPHA1",
+    model: "ALPHA1 25-40 130",
+    powerKw: 0.027,
+    phaseType: "1P",
+  },
+  {
+    loadType: "Pump",
+    brand: "Grundfos",
+    series: "ALPHA1",
+    model: "ALPHA1 15-60 130",
+    powerKw: 0.034,
+    phaseType: "1P",
+  },
+  {
+    loadType: "Pump",
+    brand: "Grundfos",
+    series: "ALPHA1 GO",
+    model: "ALPHA1 GO 32-80 180",
+    powerKw: 0.06,
+    phaseType: "1P",
+  },
+  {
+    loadType: "Pump",
+    brand: "Grundfos",
+    series: "ALPHA1 GO",
+    model: "ALPHA1 GO 32-60 180",
+    powerKw: 0.045,
+    phaseType: "1P",
+  },
+  {
+    loadType: "Pump",
+    brand: "Grundfos",
+    series: "ALPHA1 GO",
+    model: "ALPHA1 GO 32-40 180",
+    powerKw: 0.027,
+    phaseType: "1P",
+  },
+  {
+    loadType: "Pump",
+    brand: "Grundfos",
+    series: "ALPHA1 GO",
+    model: "ALPHA1 GO 25-80 180",
+    powerKw: 0.06,
+    phaseType: "1P",
+  },
+  {
+    loadType: "Pump",
+    brand: "Grundfos",
+    series: "ALPHA1 GO",
+    model: "ALPHA1 GO 25-80 130",
+    powerKw: 0.06,
+    phaseType: "1P",
+  },
+  {
+    loadType: "Pump",
+    brand: "Grundfos",
+    series: "ALPHA1 GO",
+    model: "ALPHA1 GO 25-60 180",
+    powerKw: 0.045,
+    phaseType: "1P",
+  },
+  {
+    loadType: "Pump",
+    brand: "Grundfos",
+    series: "ALPHA1 GO",
+    model: "ALPHA1 GO 25-60 130",
+    powerKw: 0.045,
+    phaseType: "1P",
+  },
+  {
+    loadType: "Pump",
+    brand: "Grundfos",
+    series: "ALPHA1 GO",
+    model: "ALPHA1 GO 25-40 180",
+    powerKw: 0.027,
+    phaseType: "1P",
+  },
+  {
+    loadType: "Pump",
+    brand: "Grundfos",
+    series: "ALPHA1 GO",
+    model: "ALPHA1 GO 25-40 130",
+    powerKw: 0.027,
+    phaseType: "1P",
+  },
+  {
+    loadType: "Pump",
+    brand: "Grundfos",
+    series: "ALPHA1 GO",
+    model: "ALPHA1 GO 20-60 130",
+    powerKw: 0.045,
+    phaseType: "1P",
+  },
+  {
+    loadType: "Pump",
+    brand: "Grundfos",
+    series: "ALPHA1 GO",
+    model: "ALPHA1 GO 20-40 130",
+    powerKw: 0.027,
+    phaseType: "1P",
+  },
+  {
+    loadType: "Pump",
+    brand: "Grundfos",
+    series: "ALPHA1 GO",
+    model: "ALPHA1 GO 15-80 130",
+    powerKw: 0.06,
+    phaseType: "1P",
+  },
+  {
+    loadType: "Pump",
+    brand: "Grundfos",
+    series: "ALPHA1 GO",
+    model: "ALPHA1 GO 15-60 130",
+    powerKw: 0.045,
+    phaseType: "1P",
+  },
+  {
+    loadType: "Pump",
+    brand: "Grundfos",
+    series: "ALPHA1 GO",
+    model: "ALPHA1 GO 15-40 130",
+    powerKw: 0.027,
+    phaseType: "1P",
+  },
+
+
+
+
+
+
   {
     loadType: "Pump",
     brand: "Grundfos",
@@ -154,10 +390,11 @@ function formatNumber(value: number, digits = 2) {
 export default function Home() {
   const [structures, setStructures] = useState<Structure[]>([]);
   const [loads, setLoads] = useState<Load[]>([]);
+  const [panels, setPanels] = useState<Panel[]>([]);
 
   const [name, setName] = useState("");
   const [selectedParent, setSelectedParent] = useState<number | null>(null);
-  const [type, setType] = useState<StructureType>("building");
+  const [type, setType] = useState<StructureType>("project");
   const [sortMode, setSortMode] = useState<SortMode>("alphabetical");
   const [editingId, setEditingId] = useState<number | null>(null);
   const [collapsedIds, setCollapsedIds] = useState<number[]>([]);
@@ -177,6 +414,12 @@ export default function Home() {
   const [phaseLine, setPhaseLine] = useState<"" | PhaseLine>("");
   const [loadCharacter, setLoadCharacter] = useState<"" | LoadCharacter>("");
   const [cosPhi, setCosPhi] = useState("");
+  const [cableLengthM, setCableLengthM] = useState("");
+  const [panelName, setPanelName] = useState("");
+  const [panelType, setPanelType] = useState<PanelType>("DB");
+  const [panelPhaseType, setPanelPhaseType] = useState<PanelPhaseType>("3P");
+  const [panelDescription, setPanelDescription] = useState("");
+  const [connectedPanelId, setConnectedPanelId] = useState("");
 
   const selectedNode = useMemo(
     () => structures.find((s) => s.id === selectedParent),
@@ -187,13 +430,23 @@ export default function Home() {
     loadType === "Pump" || loadType === "Fan" || loadType === "AHU";
   const isManualLoad = loadType === "Manual";
   const canAddLoad = selectedNode?.type === "room";
+  const canAddPanel =
+  selectedNode?.type === "project" ||
+  selectedNode?.type === "building" ||
+  selectedNode?.type === "block" ||
+  selectedNode?.type === "floor" ||
+  selectedNode?.type === "room";
 
   const getAllowedChildTypes = (): StructureType[] => {
-    if (!selectedNode) return ["building"];
-    if (selectedNode.type === "building") return ["floor"];
-    if (selectedNode.type === "floor") return ["room"];
-    return [];
-  };
+  if (!selectedNode) return ["project"];
+
+  if (selectedNode.type === "project") return ["building"];
+  if (selectedNode.type === "building") return ["block", "floor"];
+  if (selectedNode.type === "block") return ["floor"];
+  if (selectedNode.type === "floor") return ["room"];
+
+  return [];
+};
 
   const sortStructures = (items: Structure[]) => {
     const sorted = [...items];
@@ -233,14 +486,23 @@ export default function Home() {
 
   const handleSelectNode = (item: Structure) => {
   setSelectedParent(item.id);
+  setEditingId(null);
+  setName("");
 
-  if (item.type === "building") setType("floor");
-  else if (item.type === "floor") setType("room");
+  if (item.type === "project") {
+    setType("building");
+  } else if (item.type === "building") {
+    setType("block");
+  } else if (item.type === "block") {
+    setType("floor");
+  } else if (item.type === "floor") {
+    setType("room");
+  }
 };
 
-  const handleSelectRoot = () => {
+    const handleSelectRoot = () => {
     setSelectedParent(null);
-    setType("building");
+    setType("project");
     setEditingId(null);
     setName("");
   };
@@ -315,7 +577,7 @@ export default function Home() {
     setLoads((prev) => prev.filter((load) => !idsToDelete.includes(load.roomId)));
 
     setSelectedParent(null);
-    setType("building");
+    setType("project");
 
     if (editingId !== null && idsToDelete.includes(editingId)) {
       setEditingId(null);
@@ -328,8 +590,8 @@ export default function Home() {
     setName("");
 
     if (!selectedNode) {
-      setType("building");
-      return;
+    setType("project");
+    return;
     }
 
     setType(selectedNode.type);
@@ -342,7 +604,9 @@ export default function Home() {
 
   const getActionButtonLabel = () => {
     if (editingId !== null) return "Update";
+    if (type === "project") return "Add Project";
     if (type === "building") return "Add Building";
+    if (type === "block") return "Add Block";
     if (type === "floor") return "Add Floor";
     return "Add Room";
   };
@@ -383,6 +647,25 @@ export default function Home() {
         item.series === series
     );
   }, [loadType, brand, series, isCatalogLoad]);
+
+  const availablePanelsForSelectedNode = useMemo(() => {
+  if (!selectedNode) return [];
+
+  return panels.filter((panel) => {
+    if (selectedNode.type === "room") {
+      const floor = structures.find((s) => s.id === selectedNode.parentId);
+      const block = structures.find((s) => s.id === floor?.parentId);
+
+      return (
+        panel.structureId === selectedNode.id ||
+        panel.structureId === floor?.id ||
+        panel.structureId === block?.id
+      );
+    }
+
+    return panel.structureId === selectedNode.id;
+  });
+}, [panels, selectedNode, structures]);
 
   useEffect(() => {
     setBrand("");
@@ -436,6 +719,30 @@ export default function Home() {
     }
   }, [loadType, brand, series, model, isManualLoad]);
 
+const handleAddPanel = () => {
+  if (!selectedNode) return;
+  if (!panelName.trim()) return;
+
+  const now = Date.now();
+
+  const newPanel: Panel = {
+    id: now,
+    name: panelName.trim(),
+    panelType,
+    phaseType: panelPhaseType,
+    structureId: selectedNode.id,
+    description: panelDescription.trim() || undefined,
+    createdAt: now,
+  };
+
+  setPanels((prev) => [...prev, newPanel]);
+
+  setPanelName("");
+  setPanelType("DB");
+  setPanelPhaseType("3P");
+  setPanelDescription("");
+};
+
   const handleAddLoad = () => {
   if (!selectedNode || selectedNode.type !== "room") return;
   if (!loadType) return;
@@ -465,12 +772,20 @@ export default function Home() {
     const powerKw = Number(loadPowerKw);
     const quantity = Number(loadQuantity);
     const parsedCosPhi = cosPhi.trim() === "" ? undefined : Number(cosPhi);
+    const parsedCableLength =
+      cableLengthM.trim() === "" ? undefined : Number(cableLengthM);
 
     if (Number.isNaN(powerKw) || powerKw <= 0) return;
     if (Number.isNaN(quantity) || quantity <= 0) return;
 
     if (parsedCosPhi !== undefined) {
       if (Number.isNaN(parsedCosPhi) || parsedCosPhi <= 0 || parsedCosPhi > 1) {
+        return;
+      }
+    }
+
+    if (parsedCableLength !== undefined) {
+      if (Number.isNaN(parsedCableLength) || parsedCableLength < 0) {
         return;
       }
     }
@@ -494,9 +809,12 @@ export default function Home() {
       phaseType,
       phaseLine: normalizedPhaseLine,
       roomId: selectedNode.id,
+      connectedPanelId:
+        connectedPanelId.trim() === "" ? undefined : Number(connectedPanelId),
       createdAt: now,
       loadCharacter: loadCharacter || undefined,
       cosPhi: parsedCosPhi,
+      cableLengthM: parsedCableLength,
     };
 
     setLoads((prev) => [...prev, newLoad]);
@@ -514,6 +832,8 @@ export default function Home() {
     setPhaseLine("");
     setLoadCharacter("");
     setCosPhi("");
+    setCableLengthM("");
+    setConnectedPanelId("");
   };
 
   const getLoadsByRoom = (roomId: number) => {
@@ -636,6 +956,39 @@ export default function Home() {
   };
 }, [loads]);
 
+const panelSummaries = useMemo(() => {
+  return panels.map(panel => {
+    const panelLoads = loads.filter(
+      (load) => load.connectedPanelId === panel.id
+    );
+
+    const totalKw = panelLoads.reduce(
+      (sum, load) => sum + load.powerKw * load.quantity,
+      0
+    );
+
+    const totalCurrent = panelLoads.reduce((sum, load) => {
+      const totalPowerW = load.powerKw * load.quantity * 1000;
+      const cosValue = load.cosPhi && load.cosPhi > 0 ? load.cosPhi : 1;
+
+      if (load.phaseType === "1P") {
+        return sum + totalPowerW / (230 * cosValue);
+      }
+
+      return sum + totalPowerW / (1.732 * 400 * cosValue);
+    }, 0);
+
+    return {
+      panelId: panel.id,
+      name: panel.name,
+      panelType: panel.panelType,
+      totalKw,
+      totalCurrent,
+      loadCount: panelLoads.length,
+    };
+  });
+}, [panels, loads]);
+
   const phaseSegments = useMemo(() => {
     const total = summary.totalSinglePhasePowerKw;
 
@@ -661,6 +1014,9 @@ export default function Home() {
   )`;
 
   const renderLoadCard = (load: Load) => {
+    const connectedPanel = panels.find(
+    (p) => p.id === load.connectedPanelId
+    );
     return (
       <div
         key={load.id}
@@ -691,8 +1047,15 @@ export default function Home() {
         </div>
         <div>
           Character: {load.loadCharacter || "-"}
+          <div>
+          Panel:{" "}
+          {connectedPanel
+          ? `${connectedPanel.name} (${connectedPanel.panelType})`
+          : "-"}
+          </div>
           {load.cosPhi !== undefined ? ` / Cos φ: ${load.cosPhi}` : ""}
-        </div>
+          {load.cableLengthM !== undefined ? ` / Distance: ${load.cableLengthM} m` : ""}
+          </div>
       </div>
     );
   };
@@ -753,10 +1116,10 @@ export default function Home() {
 
   return (
     <div
-  style={{
-    padding: "150px 20px 20px 20px",
+    style={{
+    padding: "150px 20px 160px 20px",
     background: "#0f172a",
-    minHeight: "100vh",
+    minHeight: "calc(100vh + 240px)",
     color: "white",
   }}
 >
@@ -903,17 +1266,25 @@ export default function Home() {
       <div style={{ display: "flex", gap: 20, alignItems: "flex-start" }}>
         <div
           style={{
-            width: "32%",
-            background: "#111827",
-            border: "1px solid #334155",
-            borderRadius: 12,
-            padding: 16,
-            minHeight: 500,
-          }}
+          width: "32%",
+          background: "#111827",
+          border: "1px solid #334155",
+          borderRadius: 12,
+          padding: 16,
+          minHeight: 500,
+          maxHeight: "calc(100vh - 180px)",
+          overflowY: "auto",
+        }}
         >
           
 
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          <div
+          style={{
+          display: "flex",
+          flexDirection: "column",
+          gap: 10,
+          }}
+          >
             <select
               style={fieldStyle}
               value={type}
@@ -1007,6 +1378,82 @@ export default function Home() {
               paddingTop: 16,
             }}
           >
+<div
+  style={{
+    marginTop: 20,
+    borderTop: "1px solid #334155",
+    paddingTop: 16,
+  }}
+>
+  <h3 style={{ marginTop: 0 }}>Create Panel</h3>
+
+  <div
+    style={{
+      display: "grid",
+      gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+      gap: 10,
+    }}
+  >
+    <input
+      style={fieldStyle}
+      placeholder="Panel Name"
+      value={panelName}
+      onChange={(e) => setPanelName(e.target.value)}
+      disabled={!canAddPanel}
+    />
+
+    <select
+      style={fieldStyle}
+      value={panelType}
+      onChange={(e) => setPanelType(e.target.value as PanelType)}
+      disabled={!canAddPanel}
+    >
+      <option value="MCC">MCC</option>
+      <option value="SMDB">SMDB</option>
+      <option value="DB">DB</option>
+      <option value="LP">LP</option>
+      <option value="UPS DB">UPS DB</option>
+    </select>
+
+    <select
+      style={fieldStyle}
+      value={panelPhaseType}
+      onChange={(e) => setPanelPhaseType(e.target.value as PanelPhaseType)}
+      disabled={!canAddPanel}
+    >
+      <option value="1P">1 Phase</option>
+      <option value="3P">3 Phase</option>
+    </select>
+
+    <input
+      style={fieldStyle}
+      placeholder="Panel Description"
+      value={panelDescription}
+      onChange={(e) => setPanelDescription(e.target.value)}
+      disabled={!canAddPanel}
+    />
+
+    <button
+      onClick={handleAddPanel}
+      disabled={!canAddPanel}
+      style={{
+        ...buttonStyle,
+        cursor: canAddPanel ? "pointer" : "not-allowed",
+        opacity: canAddPanel ? 1 : 0.5,
+        gridColumn: "span 2",
+      }}
+    >
+      Add Panel
+    </button>
+  </div>
+
+  <p style={{ marginBottom: 0, opacity: 0.8, marginTop: 12 }}>
+    {canAddPanel
+      ? `Selected node for panel: ${selectedNode?.name || "-"}`
+      : "Select a node to add panel"}
+  </p>
+</div>
+
             <h3 style={{ marginTop: 0 }}>Create Load</h3>
 
             <div
@@ -1136,6 +1583,17 @@ export default function Home() {
 
               <input
                 style={fieldStyle}
+                type="number"
+                step="0.1"
+                min="0"
+                placeholder="Distance to Panel (m)"
+                value={cableLengthM}
+                onChange={(e) => setCableLengthM(e.target.value)}
+                disabled={!canAddLoad}
+              />
+
+              <input
+                style={fieldStyle}
                 placeholder="Project Code"
                 value={projectCode}
                 onChange={(e) => setProjectCode(e.target.value)}
@@ -1149,6 +1607,20 @@ export default function Home() {
                 onChange={(e) => setDescription(e.target.value)}
                 disabled={!canAddLoad}
               />
+
+              <select
+              style={fieldStyle}
+              value={connectedPanelId}
+              onChange={(e) => setConnectedPanelId(e.target.value)}
+              disabled={!canAddLoad}
+              >
+              <option value="">Connected Panel</option>
+              {availablePanelsForSelectedNode.map((panel) => (
+              <option key={panel.id} value={panel.id}>
+              {panel.name} ({panel.panelType})
+              </option>
+              ))}
+              </select>
 
               <input
                 style={fieldStyle}
@@ -1190,7 +1662,7 @@ export default function Home() {
           </div>
         </div>
 
-<div style={{ width: "68%" }}>
+  <div style={{ width: "68%" }}>
   <div
     style={{
       background: "#111827",
@@ -1198,6 +1670,8 @@ export default function Home() {
       borderRadius: 12,
       padding: 16,
       minHeight: 500,
+      maxHeight: "calc(100vh - 180px)",
+      overflowY: "auto",
     }}
   >
     <div
@@ -1260,52 +1734,93 @@ export default function Home() {
       }}
     >
       <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          marginBottom: 16,
-        }}
-      >
-        <h3 style={{ margin: 0 }}>Details</h3>
+  style={{
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 16,
+  }}
+>
+  <h3 style={{ margin: 0 }}>Details</h3>
 
-        <button
-          onClick={() => setDetailsOpen(false)}
-          style={{
-            ...buttonStyle,
-            cursor: "pointer",
-          }}
-        >
-          Close
-        </button>
-      </div>
+  <button
+    onClick={() => setDetailsOpen(false)}
+    style={{
+      ...buttonStyle,
+      cursor: "pointer",
+    }}
+  >
+    Close
+  </button>
+</div>
+      
+      
+{selectedNode ? (
+  <>
+    <div style={{ lineHeight: 1.8 }}>
+      <div><strong>Name:</strong> {selectedNode.name}</div>
+      <div><strong>Type:</strong> {selectedNode.type}</div>
+      <div><strong>ID:</strong> {selectedNode.id}</div>
+    </div>
 
-      {selectedNode ? (
-        <>
-          <div style={{ lineHeight: 1.8 }}>
-            <div><strong>Name:</strong> {selectedNode.name}</div>
-            <div><strong>Type:</strong> {selectedNode.type}</div>
-            <div><strong>ID:</strong> {selectedNode.id}</div>
-          </div>
+    <div style={{ marginTop: 20 }}>
+      <h4 style={{ marginTop: 0 }}>Panels</h4>
 
-          {selectedNode.type === "room" && (
-            <div style={{ marginTop: 20 }}>
-              <h4 style={{ marginTop: 0 }}>Room Loads</h4>
-              {getLoadsByRoom(selectedNode.id).length > 0 ? (
-                getLoadsByRoom(selectedNode.id).map(renderLoadCard)
-              ) : (
-                <p style={{ opacity: 0.7 }}>
-                  No loads added for this room yet.
-                </p>
-              )}
-            </div>
-          )}
-        </>
+      {panels.filter((p) => p.structureId === selectedNode.id).length > 0 ? (
+        panels
+          .filter((p) => p.structureId === selectedNode.id)
+          .map((panel) => {
+            const panelSummary = panelSummaries.find(
+              (summary) => summary.panelId === panel.id
+            );
+
+            return (
+              <div
+                key={panel.id}
+                style={{
+                  padding: "8px 10px",
+                  marginBottom: 8,
+                  border: "1px solid #334155",
+                  background: "#1e293b",
+                  borderRadius: 8,
+                }}
+              >
+                <div><strong>{panel.name}</strong></div>
+                <div>Type: {panel.panelType}</div>
+                <div>Phase: {panel.phaseType}</div>
+                <div>Total Power: {formatNumber(panelSummary?.totalKw ?? 0)} kW</div>
+                <div>Total Current: {formatNumber(panelSummary?.totalCurrent ?? 0)} A</div>
+                <div>Load Count: {panelSummary?.loadCount ?? 0}</div>
+                {panel.description && <div>{panel.description}</div>}
+              </div>
+            );
+          })
       ) : (
-        <p style={{ opacity: 0.7, margin: 0 }}>
-          Select a building, floor, or room.
-        </p>
+        <p style={{ opacity: 0.7 }}>No panels in this node.</p>
       )}
+    </div>
+
+    {selectedNode.type === "room" && (
+      <div style={{ marginTop: 20 }}>
+        <h4 style={{ marginTop: 0 }}>Room Loads</h4>
+        {getLoadsByRoom(selectedNode.id).length > 0 ? (
+          getLoadsByRoom(selectedNode.id).map(renderLoadCard)
+        ) : (
+          <p style={{ opacity: 0.7 }}>
+            No loads added for this room yet.
+          </p>
+        )}
+      </div>
+    )}
+  </>
+) : (
+  <p style={{ opacity: 0.7, margin: 0 }}>
+    Select a building, floor, or room.
+  </p>
+)}
+
+
+
     </div>
   </>
 )}
