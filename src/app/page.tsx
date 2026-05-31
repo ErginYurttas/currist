@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { catalog } from "./data/catalog";
 
 type StructureType = "project" | "building" | "block" | "floor" | "room";
 type SortMode = "alphabetical" | "created";
@@ -43,6 +44,7 @@ type CatalogItem = {
   model: string;
   powerKw: number;
   phaseType: PhaseType;
+  loadCharacter: LoadCharacter;
 };
 
 type Load = {
@@ -66,750 +68,7 @@ type Load = {
   cableLengthM?: number;
 };
 
-const catalog: CatalogItem[] = [
-  {
-    loadType: "Pump",
-    brand: "Grundfos",
-    series: "ALPHA SOLAR",
-    model: "ALPHA SOLAR 15-75 130",
-    powerKw: 0.045,
-    phaseType: "1P",
-  },
-  {
-    loadType: "Pump",
-    brand: "Grundfos",
-    series: "ALPHA SOLAR",
-    model: "ALPHA SOLAR 25-75 130",
-    powerKw: 0.045,
-    phaseType: "1P",
-  },
-  {
-    loadType: "Pump",
-    brand: "Grundfos",
-    series: "ALPHA SOLAR",
-    model: "ALPHA SOLAR 25-145 180",
-    powerKw: 0.06,
-    phaseType: "1P",
-  },
-  {
-    loadType: "Pump",
-    brand: "Grundfos",
-    series: "ALPHA1",
-    model: "ALPHA1 32-80 180",
-    powerKw: 0.06,
-    phaseType: "1P",
-  },
-  {
-    loadType: "Pump",
-    brand: "Grundfos",
-    series: "ALPHA1",
-    model: "ALPHA1 32-60 180",
-    powerKw: 0.045,
-    phaseType: "1P",
-  },
-  {
-    loadType: "Pump",
-    brand: "Grundfos",
-    series: "ALPHA1",
-    model: "ALPHA1 32-40 180",
-    powerKw: 0.027,
-    phaseType: "1P",
-  },
-  {
-    loadType: "Pump",
-    brand: "Grundfos",
-    series: "ALPHA1",
-    model: "ALPHA1 25-80 180",
-    powerKw: 0.06,
-    phaseType: "1P",
-  },
-  {
-    loadType: "Pump",
-    brand: "Grundfos",
-    series: "ALPHA1",
-    model: "ALPHA1 25-80 130",
-    powerKw: 0.06,
-    phaseType: "1P",
-  },
-  {
-    loadType: "Pump",
-    brand: "Grundfos",
-    series: "ALPHA1",
-    model: "ALPHA1 25-60 180",
-    powerKw: 0.045,
-    phaseType: "1P",
-  },
-  {
-    loadType: "Pump",
-    brand: "Grundfos",
-    series: "ALPHA1",
-    model: "ALPHA1 25-60 130",
-    powerKw: 0.045,
-    phaseType: "1P",
-  },
-  {
-    loadType: "Pump",
-    brand: "Grundfos",
-    series: "ALPHA1",
-    model: "ALPHA1 25-40 180",
-    powerKw: 0.027,
-    phaseType: "1P",
-  },
-  {
-    loadType: "Pump",
-    brand: "Grundfos",
-    series: "ALPHA1",
-    model: "ALPHA1 25-40 130",
-    powerKw: 0.027,
-    phaseType: "1P",
-  },
-  {
-    loadType: "Pump",
-    brand: "Grundfos",
-    series: "ALPHA1",
-    model: "ALPHA1 15-60 130",
-    powerKw: 0.034,
-    phaseType: "1P",
-  },
-  {
-    loadType: "Pump",
-    brand: "Grundfos",
-    series: "ALPHA1 GO",
-    model: "ALPHA1 GO 32-80 180",
-    powerKw: 0.06,
-    phaseType: "1P",
-  },
-  {
-    loadType: "Pump",
-    brand: "Grundfos",
-    series: "ALPHA1 GO",
-    model: "ALPHA1 GO 32-60 180",
-    powerKw: 0.045,
-    phaseType: "1P",
-  },
-  {
-    loadType: "Pump",
-    brand: "Grundfos",
-    series: "ALPHA1 GO",
-    model: "ALPHA1 GO 32-40 180",
-    powerKw: 0.027,
-    phaseType: "1P",
-  },
-  {
-    loadType: "Pump",
-    brand: "Grundfos",
-    series: "ALPHA1 GO",
-    model: "ALPHA1 GO 25-80 180",
-    powerKw: 0.06,
-    phaseType: "1P",
-  },
-  {
-    loadType: "Pump",
-    brand: "Grundfos",
-    series: "ALPHA1 GO",
-    model: "ALPHA1 GO 25-80 130",
-    powerKw: 0.06,
-    phaseType: "1P",
-  },
-  {
-    loadType: "Pump",
-    brand: "Grundfos",
-    series: "ALPHA1 GO",
-    model: "ALPHA1 GO 25-60 180",
-    powerKw: 0.045,
-    phaseType: "1P",
-  },
-  {
-    loadType: "Pump",
-    brand: "Grundfos",
-    series: "ALPHA1 GO",
-    model: "ALPHA1 GO 25-60 130",
-    powerKw: 0.045,
-    phaseType: "1P",
-  },
-  {
-    loadType: "Pump",
-    brand: "Grundfos",
-    series: "ALPHA1 GO",
-    model: "ALPHA1 GO 25-40 180",
-    powerKw: 0.027,
-    phaseType: "1P",
-  },
-  {
-    loadType: "Pump",
-    brand: "Grundfos",
-    series: "ALPHA1 GO",
-    model: "ALPHA1 GO 25-40 130",
-    powerKw: 0.027,
-    phaseType: "1P",
-  },
-  {
-    loadType: "Pump",
-    brand: "Grundfos",
-    series: "ALPHA1 GO",
-    model: "ALPHA1 GO 20-60 130",
-    powerKw: 0.045,
-    phaseType: "1P",
-  },
-  {
-    loadType: "Pump",
-    brand: "Grundfos",
-    series: "ALPHA1 GO",
-    model: "ALPHA1 GO 20-40 130",
-    powerKw: 0.027,
-    phaseType: "1P",
-  },
-  {
-    loadType: "Pump",
-    brand: "Grundfos",
-    series: "ALPHA1 GO",
-    model: "ALPHA1 GO 15-80 130",
-    powerKw: 0.06,
-    phaseType: "1P",
-  },
-  {
-    loadType: "Pump",
-    brand: "Grundfos",
-    series: "ALPHA1 GO",
-    model: "ALPHA1 GO 15-60 130",
-    powerKw: 0.045,
-    phaseType: "1P",
-  },
-  {
-    loadType: "Pump",
-    brand: "Grundfos",
-    series: "ALPHA1 GO",
-    model: "ALPHA1 GO 15-40 130",
-    powerKw: 0.027,
-    phaseType: "1P",
-  },
-  {
-    loadType: "Pump",
-    brand: "Grundfos",
-    series: "ALPHA1 L",
-    model: "ALPHA1 L 32-60 180",
-    powerKw: 0.045,
-    phaseType: "1P",
-  },
-  {
-    loadType: "Pump",
-    brand: "Grundfos",
-    series: "ALPHA1 L",
-    model: "ALPHA1 L 25-60 180",
-    powerKw: 0.045,
-    phaseType: "1P",
-  },
-  {
-    loadType: "Pump",
-    brand: "Grundfos",
-    series: "ALPHA1 L",
-    model: "ALPHA1 L 25-60 130",
-    powerKw: 0.045,
-    phaseType: "1P",
-  },
-  {
-    loadType: "Pump",
-    brand: "Grundfos",
-    series: "ALPHA1 L",
-    model: "ALPHA1 L 25-40 180",
-    powerKw: 0.025,
-    phaseType: "1P",
-  },
-  {
-    loadType: "Pump",
-    brand: "Grundfos",
-    series: "ALPHA1 L",
-    model: "ALPHA1 L 15-60 130",
-    powerKw: 0.045,
-    phaseType: "1P",
-  },
 
-
-
-  {
-    loadType: "Pump",
-    brand: "Grundfos",
-    series: "ALPHA2",
-    model: "ALPHA2 32-80 180",
-    powerKw: 0.050,
-    phaseType: "1P",
-  },
-  {
-    loadType: "Pump",
-    brand: "Grundfos",
-    series: "ALPHA2",
-    model: "ALPHA2 32-60 180",
-    powerKw: 0.034,
-    phaseType: "1P",
-  },
-  {
-    loadType: "Pump",
-    brand: "Grundfos",
-    series: "ALPHA2",
-    model: "ALPHA2 32-40 180",
-    powerKw: 0.018,
-    phaseType: "1P",
-  },
-  {
-    loadType: "Pump",
-    brand: "Grundfos",
-    series: "ALPHA2",
-    model: "ALPHA2 25-80 180",
-    powerKw: 0.050,
-    phaseType: "1P",
-  },
-  {
-    loadType: "Pump",
-    brand: "Grundfos",
-    series: "ALPHA2",
-    model: "ALPHA2 25-80 130",
-    powerKw: 0.050,
-    phaseType: "1P",
-  },
-  {
-    loadType: "Pump",
-    brand: "Grundfos",
-    series: "ALPHA2",
-    model: "ALPHA2 25-60 180",
-    powerKw: 0.034,
-    phaseType: "1P",
-  },
-  {
-    loadType: "Pump",
-    brand: "Grundfos",
-    series: "ALPHA2",
-    model: "ALPHA2 25-60 130",
-    powerKw: 0.034,
-    phaseType: "1P",
-  },
-  {
-    loadType: "Pump",
-    brand: "Grundfos",
-    series: "ALPHA2",
-    model: "ALPHA2 25-40 180",
-    powerKw: 0.018,
-    phaseType: "1P",
-  },
-  {
-    loadType: "Pump",
-    brand: "Grundfos",
-    series: "ALPHA2",
-    model: "ALPHA2 25-40 130",
-    powerKw: 0.018,
-    phaseType: "1P",
-  },
-  {
-    loadType: "Pump",
-    brand: "Grundfos",
-    series: "ALPHA2",
-    model: "ALPHA2 15-80 130",
-    powerKw: 0.050,
-    phaseType: "1P",
-  },
-  {
-    loadType: "Pump",
-    brand: "Grundfos",
-    series: "ALPHA2",
-    model: "ALPHA2 15-60 130",
-    powerKw: 0.034,
-    phaseType: "1P",
-  },
-  {
-    loadType: "Pump",
-    brand: "Grundfos",
-    series: "ALPHA2",
-    model: "ALPHA2 15-40 130",
-    powerKw: 0.018,
-    phaseType: "1P",
-  },
-  {
-    loadType: "Pump",
-    brand: "Grundfos",
-    series: "ALPHA2",
-    model: "ALPHA2 32-80 N 180",
-    powerKw: 0.050,
-    phaseType: "1P",
-  },
-  {
-    loadType: "Pump",
-    brand: "Grundfos",
-    series: "ALPHA2",
-    model: "ALPHA2 32-60 N 180",
-    powerKw: 0.034,
-    phaseType: "1P",
-  },
-  {
-    loadType: "Pump",
-    brand: "Grundfos",
-    series: "ALPHA2",
-    model: "ALPHA2 32-40 N 180",
-    powerKw: 0.018,
-    phaseType: "1P",
-  },
-  {
-    loadType: "Pump",
-    brand: "Grundfos",
-    series: "ALPHA2",
-    model: "ALPHA2 25-80 N 180",
-    powerKw: 0.050,
-    phaseType: "1P",
-  },
-  {
-    loadType: "Pump",
-    brand: "Grundfos",
-    series: "ALPHA2",
-    model: "ALPHA2 25-80 N 130",
-    powerKw: 0.050,
-    phaseType: "1P",
-  },
-  {
-    loadType: "Pump",
-    brand: "Grundfos",
-    series: "ALPHA2",
-    model: "ALPHA2 25-60 N 180",
-    powerKw: 0.034,
-    phaseType: "1P",
-  },
-  {
-    loadType: "Pump",
-    brand: "Grundfos",
-    series: "ALPHA2",
-    model: "ALPHA2 25-60 N 130",
-    powerKw: 0.034,
-    phaseType: "1P",
-  },
-  {
-    loadType: "Pump",
-    brand: "Grundfos",
-    series: "ALPHA2",
-    model: "ALPHA2 25-40 N 180",
-    powerKw: 0.018,
-    phaseType: "1P",
-  },
-  {
-    loadType: "Pump",
-    brand: "Grundfos",
-    series: "ALPHA2",
-    model: "ALPHA2 25-40 N 130",
-    powerKw: 0.018,
-    phaseType: "1P",
-  },
-  
-
-
-  {
-    loadType: "Pump",
-    brand: "Grundfos",
-    series: "ALPHA2 GO",
-    model: "ALPHA2 GO K 25-75 180",
-    powerKw: 0.075,
-    phaseType: "1P",
-  },
-  {
-    loadType: "Pump",
-    brand: "Grundfos",
-    series: "ALPHA2 GO",
-    model: "ALPHA2 GO K 25-75 130",
-    powerKw: 0.075,
-    phaseType: "1P",
-  },
-  {
-    loadType: "Pump",
-    brand: "Grundfos",
-    series: "ALPHA2 GO",
-    model: "ALPHA2 GO 32-90 180",
-    powerKw: 0.090,
-    phaseType: "1P",
-  },
-  {
-    loadType: "Pump",
-    brand: "Grundfos",
-    series: "ALPHA2 GO",
-    model: "ALPHA2 GO 32-75 180",
-    powerKw: 0.075,
-    phaseType: "1P",
-  },
-  {
-    loadType: "Pump",
-    brand: "Grundfos",
-    series: "ALPHA2 GO",
-    model: "ALPHA2 GO 32-60 180",
-    powerKw: 0.037,
-    phaseType: "1P",
-  },
-  {
-    loadType: "Pump",
-    brand: "Grundfos",
-    series: "ALPHA2 GO",
-    model: "ALPHA2 GO 32-40 180",
-    powerKw: 0.021,
-    phaseType: "1P",
-  },
-  {
-    loadType: "Pump",
-    brand: "Grundfos",
-    series: "ALPHA2 GO",
-    model: "ALPHA2 GO 25-90 180",
-    powerKw: 0.090,
-    phaseType: "1P",
-  },
-  {
-    loadType: "Pump",
-    brand: "Grundfos",
-    series: "ALPHA2 GO",
-    model: "ALPHA2 GO 25-90 130",
-    powerKw: 0.090,
-    phaseType: "1P",
-  },
-  {
-    loadType: "Pump",
-    brand: "Grundfos",
-    series: "ALPHA2 GO",
-    model: "ALPHA2 GO 25-75 180",
-    powerKw: 0.075,
-    phaseType: "1P",
-  },
-  {
-    loadType: "Pump",
-    brand: "Grundfos",
-    series: "ALPHA2 GO",
-    model: "ALPHA2 GO 25-75 130",
-    powerKw: 0.075,
-    phaseType: "1P",
-  },
-  {
-    loadType: "Pump",
-    brand: "Grundfos",
-    series: "ALPHA2 GO",
-    model: "ALPHA2 GO 25-60 180",
-    powerKw: 0.037,
-    phaseType: "1P",
-  },
-  {
-    loadType: "Pump",
-    brand: "Grundfos",
-    series: "ALPHA2 GO",
-    model: "ALPHA2 GO 25-60 130",
-    powerKw: 0.037,
-    phaseType: "1P",
-  },
-  {
-    loadType: "Pump",
-    brand: "Grundfos",
-    series: "ALPHA2 GO",
-    model: "ALPHA2 GO 25-40 180",
-    powerKw: 0.021,
-    phaseType: "1P",
-  },
-  {
-    loadType: "Pump",
-    brand: "Grundfos",
-    series: "ALPHA2 GO",
-    model: "ALPHA2 GO 25-40 130",
-    powerKw: 0.021,
-    phaseType: "1P",
-  },
-  {
-    loadType: "Pump",
-    brand: "Grundfos",
-    series: "ALPHA2 GO",
-    model: "ALPHA2 GO 15-90 130",
-    powerKw: 0.090,
-    phaseType: "1P",
-  },
-  {
-    loadType: "Pump",
-    brand: "Grundfos",
-    series: "ALPHA2 GO",
-    model: "ALPHA2 GO 15-75 130",
-    powerKw: 0.075,
-    phaseType: "1P",
-  },
-  {
-    loadType: "Pump",
-    brand: "Grundfos",
-    series: "ALPHA2 GO",
-    model: "ALPHA2 GO 15-60 130",
-    powerKw: 0.037,
-    phaseType: "1P",
-  },
-  {
-    loadType: "Pump",
-    brand: "Grundfos",
-    series: "ALPHA2 GO",
-    model: "ALPHA2 GO 15-40 130",
-    powerKw: 0.021,
-    phaseType: "1P",
-  },
-  {
-    loadType: "Pump",
-    brand: "Grundfos",
-    series: "ALPHA2 (N)",
-    model: "ALPHA2 32-80 N 180",
-    powerKw: 0.050,
-    phaseType: "1P",
-  },
-  {
-    loadType: "Pump",
-    brand: "Grundfos",
-    series: "ALPHA2 (N)",
-    model: "ALPHA2 32-60 N 180",
-    powerKw: 0.034,
-    phaseType: "1P",
-  },
-  {
-    loadType: "Pump",
-    brand: "Grundfos",
-    series: "ALPHA2 (N)",
-    model: "ALPHA2 32-40 N 180",
-    powerKw: 0.018,
-    phaseType: "1P",
-  },
-  {
-    loadType: "Pump",
-    brand: "Grundfos",
-    series: "ALPHA2 (N)",
-    model: "ALPHA2 25-80 N 180",
-    powerKw: 0.050,
-    phaseType: "1P",
-  },
-  {
-    loadType: "Pump",
-    brand: "Grundfos",
-    series: "ALPHA2 (N)",
-    model: "ALPHA2 25-80 N 130",
-    powerKw: 0.050,
-    phaseType: "1P",
-  },
-  {
-    loadType: "Pump",
-    brand: "Grundfos",
-    series: "ALPHA2 (N)",
-    model: "ALPHA2 25-60 N 180",
-    powerKw: 0.034,
-    phaseType: "1P",
-  },
-  {
-    loadType: "Pump",
-    brand: "Grundfos",
-    series: "ALPHA2 (N)",
-    model: "ALPHA2 25-60 N 130",
-    powerKw: 0.034,
-    phaseType: "1P",
-  },
-  {
-    loadType: "Pump",
-    brand: "Grundfos",
-    series: "ALPHA2 (N)",
-    model: "ALPHA2 25-40 N 180",
-    powerKw: 0.018,
-    phaseType: "1P",
-  },
-  {
-    loadType: "Pump",
-    brand: "Grundfos",
-    series: "ALPHA2 (N)",
-    model: "ALPHA2 25-40 N 130",
-    powerKw: 0.018,
-    phaseType: "1P",
-  },
-
-
-  {
-    loadType: "Pump",
-    brand: "Grundfos",
-    series: "ALPHA2 (N)",
-    model: "ALPHA3 32-80 180",
-    powerKw: 0.050,
-    phaseType: "1P",
-  },
-  {
-    loadType: "Pump",
-    brand: "Grundfos",
-    series: "ALPHA2 (N)",
-    model: "ALPHA3 25-80 180",
-    powerKw: 0.050,
-    phaseType: "1P",
-  },
-  {
-    loadType: "Pump",
-    brand: "Grundfos",
-    series: "ALPHA2 (N)",
-    model: "ALPHA3 25-60 180",
-    powerKw: 0.034,
-    phaseType: "1P",
-  },
-  {
-    loadType: "Pump",
-    brand: "Grundfos",
-    series: "ALPHA2 (N)",
-    model: "ALPHA3 15-60 130",
-    powerKw: 0.034,
-    phaseType: "1P",
-  },
-  {
-    loadType: "Pump",
-    brand: "Grundfos",
-    series: "COMFORT AUTOADAPT",
-    model: "COMFORT 15-14 BX TA",
-    powerKw: 0.007,
-    phaseType: "1P",
-  },
-  {
-    loadType: "Pump",
-    brand: "Grundfos",
-    series: "COMFORT AUTOADAPT",
-    model: "COMFORT 15-14 B TA",
-    powerKw: 0.007,
-    phaseType: "1P",
-  },
-  {
-    loadType: "Pump",
-    brand: "Grundfos",
-    series: "COMFORT BASIC",
-    model: "COMFORT 15-14 BX TA",
-    powerKw: 0.007,
-    phaseType: "1P",
-  },
-  {
-    loadType: "Pump",
-    brand: "Grundfos",
-    series: "COMFORT BASIC",
-    model: "COMFORT 15-14 B",
-    powerKw: 0.007,
-    phaseType: "1P",
-  },
-
-
-
-
-
-
-  {
-    loadType: "Fan",
-    brand: "Systemair",
-    series: "K",
-    model: "K 160 EC",
-    powerKw: 0.12,
-    phaseType: "1P",
-  },
-  {
-    loadType: "Fan",
-    brand: "Systemair",
-    series: "K",
-    model: "K 200 EC",
-    powerKw: 0.17,
-    phaseType: "1P",
-  },
-  {
-    loadType: "AHU",
-    brand: "Systemair",
-    series: "Geniox",
-    model: "Geniox Core 06",
-    powerKw: 1.5,
-    phaseType: "1P",
-  },
-];
 
 const manualLoadTypes: ManualLoadType[] = [
   "Socket Outlet",
@@ -820,6 +79,7 @@ const manualLoadTypes: ManualLoadType[] = [
   "Other",
 ];
 
+const cosPhiOptions = ["0.75", "0.80", "0.85", "0.90", "0.95", "1.00"];
 const fieldStyle: React.CSSProperties = {
   padding: "8px 10px",
   borderRadius: 8,
@@ -1132,17 +392,19 @@ export default function Home() {
 }, [panels, selectedNode, structures]);
 
   useEffect(() => {
-    setBrand("");
-    setSeries("");
-    setModel("");
-    setLoadPowerKw("");
-    setManualLoadType("");
+  setBrand("");
+  setSeries("");
+  setModel("");
+  setLoadPowerKw("");
+  setManualLoadType("");
+  setLoadCharacter("");
+  setCosPhi("");
 
-    if (!isManualLoad) {
-      setPhaseType("");
-      setPhaseLine("");
-    }
-  }, [loadType, isManualLoad]);
+  if (!isManualLoad) {
+    setPhaseType("");
+    setPhaseLine("");
+  }
+}, [loadType, isManualLoad]);
 
   useEffect(() => {
     setSeries("");
@@ -1176,7 +438,9 @@ export default function Home() {
     }
 
     setLoadPowerKw(String(selectedCatalogItem.powerKw));
-    setPhaseType(selectedCatalogItem.phaseType);
+    setPhaseType(selectedCatalogItem.phaseType as PhaseType);
+    setLoadCharacter(selectedCatalogItem.loadCharacter as LoadCharacter);
+    setCosPhi("0.85");
 
     if (selectedCatalogItem.phaseType === "3P") {
       setPhaseLine("");
@@ -1477,7 +741,7 @@ const panelSummaries = useMemo(() => {
     #f59e0b ${phaseSegments[0].value + phaseSegments[1].value}% 100%
   )`;
 
-  const renderLoadCard = (load: Load) => {
+    const renderLoadCard = (load: Load) => {
     const connectedPanel = panels.find(
     (p) => p.id === load.connectedPanelId
     );
@@ -1495,36 +759,86 @@ const panelSummaries = useMemo(() => {
         <div>
           <strong>{load.projectCode}</strong> - {load.description} [{load.loadType}]
         </div>
+
         <div>
-          {load.loadType === "Manual"
-            ? `${load.manualLoadType || "-"}`
-            : `${load.brand || "-"} / ${load.series || "-"} / ${load.model || "-"}`
-          }
+          <strong>{load.projectCode}</strong>
         </div>
-        <div>
-          {load.powerKw} kW × {load.quantity} ={" "}
-          {(load.powerKw * load.quantity).toFixed(2)} kW
-        </div>
-        <div>
-          Phase: {load.phaseType}
-          {load.phaseType === "1P" && load.phaseLine ? ` / Line: ${load.phaseLine}` : ""}
-        </div>
-        <div>
-          Character: {load.loadCharacter || "-"}
+
+        <div>{load.description}</div>
+
           <div>
           Panel:{" "}
           {connectedPanel
           ? `${connectedPanel.name} (${connectedPanel.panelType})`
           : "-"}
-          </div>
-          {load.cosPhi !== undefined ? ` / Cos φ: ${load.cosPhi}` : ""}
-          {load.cableLengthM !== undefined ? ` / Distance: ${load.cableLengthM} m` : ""}
-          </div>
+        s</div>
+
       </div>
     );
   };
 
-  const renderLoads = (roomId: number) => {
+const renderLoadDetailsCard = (load: Load) => {
+  const connectedPanel = panels.find(
+    (p) => p.id === load.connectedPanelId
+  );
+
+  return (
+    <div
+      key={load.id}
+      style={{
+        padding: "8px 10px",
+        marginBottom: 8,
+        border: "1px solid #334155",
+        background: "#1e293b",
+        borderRadius: 8,
+      }}
+    >
+      <div>
+        <strong>{load.projectCode}</strong> - {load.description} [{load.loadType}]
+      </div>
+
+      <div>
+        {load.loadType === "Manual"
+          ? `${load.manualLoadType || "-"}`
+          : `${load.brand || "-"} / ${load.series || "-"} / ${load.model || "-"}`
+        }
+      </div>
+
+      <div>
+        {load.powerKw} kW × {load.quantity} ={" "}
+        {(load.powerKw * load.quantity).toFixed(2)} kW
+      </div>
+
+      <div>
+        Phase: {load.phaseType}
+        {load.phaseType === "1P" && load.phaseLine
+          ? ` / Line: ${load.phaseLine}`
+          : ""}
+      </div>
+
+      <div>
+        Character: {load.loadCharacter || "-"}
+      </div>
+
+      <div>
+        Panel:{" "}
+        {connectedPanel
+          ? `${connectedPanel.name} (${connectedPanel.panelType})`
+          : "-"}
+      </div>
+
+      <div>
+        Cos φ: {load.cosPhi ?? "-"}
+      </div>
+
+      <div>
+        Distance: {load.cableLengthM ?? "-"} m
+      </div>
+    </div>
+  );
+};
+
+    const renderLoads = (roomId: number) => {
     const roomLoads = getLoadsByRoom(roomId);
 
     if (roomLoads.length === 0) return null;
@@ -2023,9 +1337,9 @@ const panelSummaries = useMemo(() => {
                 style={fieldStyle}
                 value={loadCharacter}
                 onChange={(e) =>
-                  setLoadCharacter(e.target.value as "" | LoadCharacter)
+                setLoadCharacter(e.target.value as "" | LoadCharacter)
                 }
-                disabled={!canAddLoad}
+              disabled={!canAddLoad || !isManualLoad}
               >
                 <option value="">Select Load Character</option>
                 <option value="Ohmic">Ohmic</option>
@@ -2033,17 +1347,19 @@ const panelSummaries = useMemo(() => {
                 <option value="Capacitive">Capacitive</option>
               </select>
 
-              <input
+              <select
                 style={fieldStyle}
-                type="number"
-                step="0.01"
-                min="0"
-                max="1"
-                placeholder="Cos φ"
                 value={cosPhi}
                 onChange={(e) => setCosPhi(e.target.value)}
                 disabled={!canAddLoad}
-              />
+              >
+              <option value="">Select Cos φ</option>
+                {cosPhiOptions.map((item) => (
+                <option key={item} value={item}>
+                {item}
+                </option>
+                ))}
+              </select>
 
               <input
                 style={fieldStyle}
@@ -2230,10 +1546,8 @@ const panelSummaries = useMemo(() => {
     <div style={{ marginTop: 20 }}>
       <h4 style={{ marginTop: 0 }}>Panels</h4>
 
-      {panels.filter((p) => p.structureId === selectedNode.id).length > 0 ? (
-        panels
-          .filter((p) => p.structureId === selectedNode.id)
-          .map((panel) => {
+            {availablePanelsForSelectedNode.length > 0 ? (
+            availablePanelsForSelectedNode.map((panel) => {
             const panelSummary = panelSummaries.find(
               (summary) => summary.panelId === panel.id
             );
@@ -2268,7 +1582,7 @@ const panelSummaries = useMemo(() => {
       <div style={{ marginTop: 20 }}>
         <h4 style={{ marginTop: 0 }}>Room Loads</h4>
         {getLoadsByRoom(selectedNode.id).length > 0 ? (
-          getLoadsByRoom(selectedNode.id).map(renderLoadCard)
+          getLoadsByRoom(selectedNode.id).map(renderLoadDetailsCard)
         ) : (
           <p style={{ opacity: 0.7 }}>
             No loads added for this room yet.
