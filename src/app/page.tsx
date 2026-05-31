@@ -124,6 +124,7 @@ export default function Home() {
   const [collapsedIds, setCollapsedIds] = useState<number[]>([]);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [welcomeOpen, setWelcomeOpen] = useState(true);
+  const [helpOpen, setHelpOpen] = useState(false);
   
 
   const [projectCode, setProjectCode] = useState("");
@@ -1555,15 +1556,109 @@ const renderLoadDetailsCard = (load: Load) => {
           marginTop: 24,
         }}
       >
+        <div
+  style={{
+    display: "flex",
+    justifyContent: "flex-end",
+    gap: 10,
+    marginTop: 24,
+  }}
+>
+  <button
+    onClick={() => {
+      setWelcomeOpen(false);
+      setHelpOpen(true);
+    }}
+    style={{
+      background: "#1e293b",
+      border: "1px solid #334155",
+      padding: "10px 18px",
+      borderRadius: 8,
+      color: "white",
+      cursor: "pointer",
+    }}
+  >
+    I Need Help Getting Started
+  </button>
+
+  <button
+    onClick={() => setWelcomeOpen(false)}
+    style={{
+      ...buttonStyle,
+      cursor: "pointer",
+      padding: "10px 18px",
+    }}
+  >
+    Start Designing
+  </button>
+</div>
+      </div>
+    </div>
+  </>
+)}
+
+{helpOpen && (
+  <>
+    <div
+      onClick={() => setHelpOpen(false)}
+      style={{
+        position: "fixed",
+        inset: 0,
+        background: "rgba(15, 23, 42, 0.55)",
+        zIndex: 10000,
+      }}
+    />
+
+    <div
+      style={{
+        position: "fixed",
+        top: "50%",
+        left: "50%",
+        transform: "translate(-50%, -50%)",
+        width: 720,
+        maxWidth: "calc(100vw - 40px)",
+        background: "#111827",
+        border: "1px solid #334155",
+        borderRadius: 18,
+        padding: 28,
+        zIndex: 10001,
+        boxShadow: "0 25px 60px rgba(0,0,0,0.45)",
+      }}
+    >
+      <h2 style={{ marginTop: 0, marginBottom: 18, fontSize: 30 }}>
+        How to Start with Currist
+      </h2>
+
+      <div style={{ lineHeight: 1.8, opacity: 0.9, fontSize: 15 }}>
+        <p>
+          Start by creating your project structure. First add a project, then
+          continue with building, block, floor, and room definitions.
+        </p>
+
+        <p>
+          After selecting a room, you can create electrical loads such as pumps,
+          fans, AHUs, or manual loads. Catalog-based loads will automatically
+          bring default technical data such as power, phase type, and load
+          character.
+        </p>
+
+        <p>
+          You can also create panels and assign loads to panels. Currist will
+          calculate installed power, operating current, phase distribution, load
+          character, and power factor summaries.
+        </p>
+      </div>
+
+      <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 24 }}>
         <button
-          onClick={() => setWelcomeOpen(false)}
+          onClick={() => setHelpOpen(false)}
           style={{
             ...buttonStyle,
             cursor: "pointer",
             padding: "10px 18px",
           }}
         >
-          Start Designing
+          Got It, Start Designing
         </button>
       </div>
     </div>
