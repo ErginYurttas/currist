@@ -123,6 +123,7 @@ export default function Home() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [collapsedIds, setCollapsedIds] = useState<number[]>([]);
   const [detailsOpen, setDetailsOpen] = useState(false);
+  const [welcomeOpen, setWelcomeOpen] = useState(true);
   
 
   const [projectCode, setProjectCode] = useState("");
@@ -1483,6 +1484,91 @@ const renderLoadDetailsCard = (load: Load) => {
   </div>
 </div>
 
+{welcomeOpen && (
+  <>
+    <div
+      onClick={() => setWelcomeOpen(false)}
+      style={{
+        position: "fixed",
+        inset: 0,
+        background: "rgba(15, 23, 42, 0.55)",
+        zIndex: 10000,
+      }}
+    />
+
+    <div
+      style={{
+        position: "fixed",
+        top: "50%",
+        left: "50%",
+        transform: "translate(-50%, -50%)",
+        width: 700,
+        maxWidth: "calc(100vw - 40px)",
+        background: "#111827",
+        border: "1px solid #334155",
+        borderRadius: 18,
+        padding: 28,
+        zIndex: 10001,
+        boxShadow: "0 25px 60px rgba(0,0,0,0.45)",
+      }}
+    >
+      <h2
+        style={{
+          marginTop: 0,
+          marginBottom: 18,
+          fontSize: 32,
+        }}
+      >
+        Welcome to Currist
+      </h2>
+
+      <div
+        style={{
+          lineHeight: 1.8,
+          opacity: 0.9,
+          fontSize: 15,
+        }}
+      >
+        <p>
+          Currist is an electrical design and calculation platform developed
+          to help engineers create project structures, define electrical loads,
+          assign loads to panels, and calculate building-level and panel-level
+          electrical summaries.
+        </p>
+
+        <p>
+          With Currist, users can organize projects by building, block, floor,
+          and room; add catalog-based or manual loads; evaluate installed
+          power, estimated current, phase distribution, load character, and
+          power factor.
+        </p>
+
+        <p>
+          This platform is currently under active development.
+        </p>
+      </div>
+
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "flex-end",
+          marginTop: 24,
+        }}
+      >
+        <button
+          onClick={() => setWelcomeOpen(false)}
+          style={{
+            ...buttonStyle,
+            cursor: "pointer",
+            padding: "10px 18px",
+          }}
+        >
+          Start Designing
+        </button>
+      </div>
+    </div>
+  </>
+)}
 
 {detailsOpen && (
   <>
