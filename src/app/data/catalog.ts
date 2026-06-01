@@ -829,7 +829,7 @@ export const catalog = [
     series: "Geniox",
     model: "Geniox Core 06",
     powerKw: 1.5,
-    phaseType: "1P",
+    phaseType: "3P",
     loadCharacter: "Inductive"
   },
 ];

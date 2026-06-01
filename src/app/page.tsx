@@ -566,6 +566,36 @@ const handleAddPanel = () => {
     setConnectedPanelId("");
   };
 
+  const handleChangeLoadPanel = (loadId: number, newPanelId: string) => {
+  const selectedLoad = loads.find((load) => load.id === loadId);
+
+  if (!selectedLoad) return;
+
+  if (newPanelId.trim() !== "") {
+    const selectedPanel = panels.find(
+      (panel) => panel.id === Number(newPanelId)
+    );
+
+    if (!selectedPanel) return;
+
+    if (selectedPanel.phaseType === "1P" && selectedLoad.phaseType === "3P") {
+      return;
+    }
+  }
+
+  setLoads((prev) =>
+    prev.map((load) =>
+      load.id === loadId
+        ? {
+            ...load,
+            connectedPanelId:
+              newPanelId.trim() === "" ? undefined : Number(newPanelId),
+          }
+        : load
+    )
+  );
+};
+
   const getLoadsByRoom = (roomId: number) => {
     const roomLoads = loads.filter((load) => load.roomId === roomId);
 
@@ -708,14 +738,60 @@ const panelSummaries = useMemo(() => {
       return sum + totalPowerW / (1.732 * 400 * cosValue);
     }, 0);
 
+    let weightedCosNumerator = 0;
+let weightedCosDenominator = 0;
+
+panelLoads.forEach((load) => {
+  const p = load.powerKw * load.quantity;
+  const cosValue = load.cosPhi && load.cosPhi > 0 ? load.cosPhi : 1;
+
+  weightedCosNumerator += p * cosValue;
+  weightedCosDenominator += p;
+});
+
+const averageCosPhi =
+  weightedCosDenominator > 0
+    ? weightedCosNumerator / weightedCosDenominator
+    : 1;
+
+let panelP = 0;
+let panelQ = 0;
+let panelS = 0;
+
+panelLoads.forEach((load) => {
+  const p = load.powerKw * load.quantity;
+  const cosValue = load.cosPhi && load.cosPhi > 0 ? load.cosPhi : 1;
+  const s = p / cosValue;
+  const qBase = Math.sqrt(Math.max(s * s - p * p, 0));
+
+  let signedQ = qBase;
+
+  if (load.loadCharacter === "Capacitive") {
+    signedQ = -qBase;
+  } else if (load.loadCharacter === "Ohmic") {
+    signedQ = 0;
+  }
+
+  panelP += p;
+  panelQ += signedQ;
+  panelS += s;
+});
+
+
     return {
       panelId: panel.id,
       name: panel.name,
       panelType: panel.panelType,
       totalKw,
       totalCurrent,
+      averageCosPhi,
+      panelP,
+      panelQ,
+      panelS,
       loadCount: panelLoads.length,
     };
+
+
   });
 }, [panels, loads]);
 
@@ -828,6 +904,36 @@ const renderLoadDetailsCard = (load: Load) => {
           ? `${connectedPanel.name} (${connectedPanel.panelType})`
           : "-"}
       </div>
+
+      <select
+  style={{
+    ...fieldStyle,
+    marginTop: 8,
+    width: "100%",
+  }}
+  value={load.connectedPanelId ?? ""}
+  onChange={(e) =>
+    handleChangeLoadPanel(load.id, e.target.value)
+  }
+>
+  <option value="">Unassigned</option>
+
+  {panels.map((panel) => {
+  const isInvalid =
+    panel.phaseType === "1P" && load.phaseType === "3P";
+
+  return (
+    <option
+      key={panel.id}
+      value={panel.id}
+      disabled={isInvalid}
+    >
+      {panel.name} ({panel.panelType})
+      {isInvalid ? " - Invalid Phase" : ""}
+    </option>
+  );
+})}
+</select>
 
       <div>
         Cos φ: {load.cosPhi ?? "-"}
@@ -973,7 +1079,14 @@ const renderLoadDetailsCard = (load: Load) => {
   </div>
   <div style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: 14 }}>
     <div>P: {formatNumber(summary.totalP)} kW</div>
-    <div>Q: {formatNumber(summary.totalQ)} kVAr</div>
+    <div>
+      Q:{" "}
+      {summary.totalQ > 0
+      ? `↑ ${formatNumber(summary.totalQ)} kVAr`
+      : summary.totalQ < 0
+      ? `↓ ${formatNumber(summary.totalQ)} kVAr`
+      : `→ ${formatNumber(summary.totalQ)} kVAr`}
+    </div>
     <div>S: {formatNumber(summary.totalS)} kVA</div>
     <div>Avg. Cos φ: {formatNumber(summary.averageCosPhi, 2)}</div>
   </div>
@@ -1749,6 +1862,25 @@ const renderLoadDetailsCard = (load: Load) => {
                 <div>Phase: {panel.phaseType}</div>
                 <div>Total Power: {formatNumber(panelSummary?.totalKw ?? 0)} kW</div>
                 <div>Total Current: {formatNumber(panelSummary?.totalCurrent ?? 0)} A</div>
+                <div>P: {formatNumber(panelSummary?.panelP ?? 0)} kW (Active)</div>
+                <div>
+                  Q:{" "}
+                    {(panelSummary?.panelQ ?? 0) > 0
+                    ? "↑"
+                    : (panelSummary?.panelQ ?? 0) < 0
+                    ? "↓"
+                    : "→"}{" "}
+                    {formatNumber(panelSummary?.panelQ ?? 0)} kVAr{" "}
+                    {(panelSummary?.panelQ ?? 0) > 0
+                    ? "(Inductive)"
+                    : (panelSummary?.panelQ ?? 0) < 0
+                    ? "(Capacitive)"
+                    : "(Ohmic)"}
+                </div>
+                <div>S: {formatNumber(panelSummary?.panelS ?? 0)} kVA (Apparent)</div>
+                <div>
+                  Avg. Cos φ: {formatNumber(panelSummary?.averageCosPhi ?? 1, 2)}
+                </div>
                 <div>Load Count: {panelSummary?.loadCount ?? 0}</div>
                 {panel.description && <div>{panel.description}</div>}
               </div>
