@@ -3,70 +3,24 @@
 import { useEffect, useMemo, useState } from "react";
 import { catalog } from "./data/catalog";
 
-type StructureType = "project" | "building" | "block" | "floor" | "room";
-type SortMode = "alphabetical" | "created";
-type LoadType = "Pump" | "Fan" | "AHU" | "Manual";
-type PhaseType = "1P" | "3P";
-type PhaseLine = "R" | "S" | "T";
-type LoadCharacter = "Ohmic" | "Inductive" | "Capacitive";
-type PanelType = "MCC" | "SMDB" | "DB" | "LP" | "UPS DB";
-type PanelPhaseType = "1P" | "3P";
+import {
+  StructureType,
+  SortMode,
+  LoadType,
+  PhaseType,
+  PhaseLine,
+  LoadCharacter,
+  PanelType,
+  PanelPhaseType,
+  Panel,
+  ManualLoadType,
+  Structure,
+  CatalogItem,
+  Load,
+} from "./types";
 
-type Panel = {
-  id: number;
-  name: string;
-  panelType: PanelType;
-  phaseType: PanelPhaseType;
-  structureId: number;
-  description?: string;
-  createdAt: number;
-};
-type ManualLoadType =
-  | "Socket Outlet"
-  | "Lighting Circuit"
-  | "UPS Outlet"
-  | "Kitchen Outlet"
-  | "Spare Load"
-  | "Other";
 
-type Structure = {
-  id: number;
-  name: string;
-  type: StructureType;
-  parentId: number | null;
-  createdAt: number;
-};
 
-type CatalogItem = {
-  loadType: Exclude<LoadType, "Manual">;
-  brand: string;
-  series: string;
-  model: string;
-  powerKw: number;
-  phaseType: PhaseType;
-  loadCharacter: LoadCharacter;
-};
-
-type Load = {
-  id: number;
-  projectCode: string;
-  description: string;
-  loadType: LoadType;
-  manualLoadType?: ManualLoadType;
-  brand: string;
-  series: string;
-  model: string;
-  powerKw: number;
-  quantity: number;
-  phaseType: PhaseType;
-  phaseLine?: PhaseLine;
-  roomId: number;
-  connectedPanelId?: number;
-  createdAt: number;
-  loadCharacter?: LoadCharacter;
-  cosPhi?: number;
-  cableLengthM?: number;
-};
 
 
 
@@ -146,6 +100,7 @@ export default function Home() {
   const [panelPhaseType, setPanelPhaseType] = useState<PanelPhaseType>("3P");
   const [panelDescription, setPanelDescription] = useState("");
   const [connectedPanelId, setConnectedPanelId] = useState("");
+  const [editingLoadId, setEditingLoadId] = useState<number | null>(null);
 
   const selectedNode = useMemo(
     () => structures.find((s) => s.id === selectedParent),
@@ -393,7 +348,11 @@ export default function Home() {
   });
 }, [panels, selectedNode, structures]);
 
+  
+
   useEffect(() => {
+  if (editingLoadId !== null) return;
+
   setBrand("");
   setSeries("");
   setModel("");
@@ -409,15 +368,19 @@ export default function Home() {
 }, [loadType, isManualLoad]);
 
   useEffect(() => {
-    setSeries("");
-    setModel("");
-    setLoadPowerKw("");
-  }, [brand]);
+  if (editingLoadId !== null) return;
+
+  setSeries("");
+  setModel("");
+  setLoadPowerKw("");
+}, [brand, editingLoadId]);
 
   useEffect(() => {
-    setModel("");
-    setLoadPowerKw("");
-  }, [series]);
+  if (editingLoadId !== null) return;
+
+  setModel("");
+  setLoadPowerKw("");
+}, [series, editingLoadId]);
 
   useEffect(() => {
     const selectedCatalogItem = catalog.find(
@@ -490,8 +453,10 @@ const handleAddPanel = () => {
 
     const normalizedProjectCode = projectCode.trim().toLowerCase();
     const projectCodeExists = loads.some(
-    (load) => load.projectCode.trim().toLowerCase() === normalizedProjectCode
-    );
+    (load) =>
+    load.projectCode.trim().toLowerCase() === normalizedProjectCode &&
+    load.id !== editingLoadId
+);
 
     if (projectCodeExists) {
     window.alert("Project Code must be unique.");
@@ -520,10 +485,62 @@ const handleAddPanel = () => {
       }
     }
 
+    const normalizedPhaseLine: PhaseLine | undefined =
+  phaseType === "1P" && phaseLine !== "" ? phaseLine : undefined;
+
+    if (editingLoadId !== null) {
+    setLoads((prev) =>
+    prev.map((load) =>
+      load.id === editingLoadId
+        ? {
+            ...load,
+            projectCode: projectCode.trim(),
+            description: description.trim(),
+            loadType,
+            manualLoadType:
+              isManualLoad && manualLoadType ? manualLoadType : undefined,
+            brand: isCatalogLoad ? brand : "",
+            series: isCatalogLoad ? series : "",
+            model: isCatalogLoad ? model : "",
+            powerKw,
+            quantity,
+            phaseType,
+            phaseLine: normalizedPhaseLine,
+            connectedPanelId:
+              connectedPanelId.trim() === ""
+                ? undefined
+                : Number(connectedPanelId),
+            loadCharacter: loadCharacter || undefined,
+            cosPhi: parsedCosPhi,
+            cableLengthM: parsedCableLength,
+          }
+        : load
+    )
+  );
+
+  setEditingLoadId(null);
+  setProjectCode("");
+  setDescription("");
+  setLoadPowerKw("");
+  setLoadQuantity("1");
+  setBrand("");
+  setSeries("");
+  setModel("");
+  setLoadType("");
+  setManualLoadType("");
+  setPhaseType("");
+  setPhaseLine("");
+  setLoadCharacter("");
+  setCosPhi("");
+  setCableLengthM("");
+  setConnectedPanelId("");
+
+  return;
+}
+
     const now = Date.now();
 
-    const normalizedPhaseLine: PhaseLine | undefined =
-      phaseType === "1P" && phaseLine !== "" ? phaseLine : undefined;
+    
 
     const newLoad: Load = {
       id: now,
@@ -595,6 +612,43 @@ const handleAddPanel = () => {
     )
   );
 };
+
+const handleDeleteLoad = (loadId: number) => {
+  const confirmed = window.confirm(
+    "This load will be deleted. Are you sure?"
+  );
+
+  if (!confirmed) return;
+
+  setLoads((prev) =>
+    prev.filter((load) => load.id !== loadId)
+  );
+  };
+
+const handleStartEditLoad = (load: Load) => {
+  setEditingLoadId(load.id);
+
+  setProjectCode(load.projectCode);
+  setDescription(load.description);
+  setLoadType(load.loadType);
+  setManualLoadType(load.manualLoadType || "");
+  setBrand(load.brand);
+  setSeries(load.series);
+  setModel(load.model);
+  setLoadPowerKw(String(load.powerKw));
+  setLoadQuantity(String(load.quantity));
+  setPhaseType(load.phaseType);
+  setPhaseLine(load.phaseLine || "");
+  setLoadCharacter(load.loadCharacter || "");
+  setCosPhi(load.cosPhi !== undefined ? String(load.cosPhi) : "");
+  setCableLengthM(
+    load.cableLengthM !== undefined ? String(load.cableLengthM) : ""
+  );
+  setConnectedPanelId(
+    load.connectedPanelId !== undefined ? String(load.connectedPanelId) : ""
+  );
+};
+
 
   const getLoadsByRoom = (roomId: number) => {
     const roomLoads = loads.filter((load) => load.roomId === roomId);
@@ -716,6 +770,7 @@ const handleAddPanel = () => {
   };
 }, [loads]);
 
+
 const panelSummaries = useMemo(() => {
   return panels.map(panel => {
     const panelLoads = loads.filter(
@@ -834,22 +889,58 @@ panelLoads.forEach((load) => {
           borderRadius: 8,
         }}
       >
-        <div>
-          <strong>{load.projectCode}</strong> - {load.description} [{load.loadType}]
+        <div style={{ fontSize: 14 }}>
+          <strong>{load.projectCode}</strong> - {load.description}
         </div>
-
-        <div>
-          <strong>{load.projectCode}</strong>
-        </div>
-
-        <div>{load.description}</div>
 
           <div>
           Panel:{" "}
           {connectedPanel
           ? `${connectedPanel.name} (${connectedPanel.panelType})`
           : "-"}
-        s</div>
+        </div>
+
+        <div
+          style={{
+          display: "flex",
+          gap: 8,
+          marginTop: 8,
+          justifyContent: "flex-end",
+        }}
+        >
+
+        <button
+        onClick={(e) => {
+        e.stopPropagation();
+        handleStartEditLoad(load);
+        }}
+        style={{
+        ...buttonStyle,
+        minWidth: 90,
+        background: "#334155",
+        color: "white",
+        cursor: "pointer",
+        }}
+        >
+  Edit
+</button>
+
+  <button
+    onClick={(e) => {
+      e.stopPropagation();
+      handleDeleteLoad(load.id);
+    }}
+    style={{
+      ...buttonStyle,
+      minWidth: 90,
+      background: "#ef4444",
+      color: "white",
+      cursor: "pointer",
+    }}
+  >
+    Delete
+  </button>
+</div>
 
       </div>
     );
@@ -905,35 +996,7 @@ const renderLoadDetailsCard = (load: Load) => {
           : "-"}
       </div>
 
-      <select
-  style={{
-    ...fieldStyle,
-    marginTop: 8,
-    width: "100%",
-  }}
-  value={load.connectedPanelId ?? ""}
-  onChange={(e) =>
-    handleChangeLoadPanel(load.id, e.target.value)
-  }
->
-  <option value="">Unassigned</option>
-
-  {panels.map((panel) => {
-  const isInvalid =
-    panel.phaseType === "1P" && load.phaseType === "3P";
-
-  return (
-    <option
-      key={panel.id}
-      value={panel.id}
-      disabled={isInvalid}
-    >
-      {panel.name} ({panel.panelType})
-      {isInvalid ? " - Invalid Phase" : ""}
-    </option>
-  );
-})}
-</select>
+      
 
       <div>
         Cos φ: {load.cosPhi ?? "-"}
@@ -942,6 +1005,8 @@ const renderLoadDetailsCard = (load: Load) => {
       <div>
         Distance: {load.cableLengthM ?? "-"} m
       </div>
+
+
     </div>
   );
 };
@@ -1545,7 +1610,7 @@ const renderLoadDetailsCard = (load: Load) => {
                   gridColumn: "span 2",
                 }}
               >
-                Add Load
+                {editingLoadId !== null ? "Update Load" : "Add Load"}
               </button>
             </div>
 
