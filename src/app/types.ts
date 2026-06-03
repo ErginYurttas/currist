@@ -1,3 +1,4 @@
+
 export type StructureType = "project" | "building" | "block" | "floor" | "room";
 export type SortMode = "alphabetical" | "created";
 export type LoadType = "Pump" | "Fan" | "AHU" | "Manual";
@@ -6,7 +7,6 @@ export type PhaseLine = "R" | "S" | "T";
 export type LoadCharacter = "Ohmic" | "Inductive" | "Capacitive";
 export type PanelType = "MCC" | "SMDB" | "DB" | "LP" | "UPS DB";
 export type PanelPhaseType = "1P" | "3P";
-
 
 export type Panel = {
   id: number;
@@ -60,6 +60,7 @@ export type Load = {
   roomId: number;
   connectedPanelId?: number;
   createdAt: number;
+  updatedAt?: number;
   loadCharacter?: LoadCharacter;
   cosPhi?: number;
   cableLengthM?: number;
