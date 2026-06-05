@@ -34,6 +34,36 @@ const manualLoadTypes: ManualLoadType[] = [
 ];
 
 const cosPhiOptions = ["0.75", "0.80", "0.85", "0.90", "0.95", "1.00"];
+
+const countryOptions = [
+  "Turkey",
+  "Germany",
+  "France",
+  "United Kingdom",
+  "United States",
+  "Saudi Arabia",
+  "United Arab Emirates",
+  "Qatar",
+  "Kuwait",
+  "Other",
+];
+
+const buildingTypeOptions = [
+  "Hospital",
+  "Shopping Mall",
+  "Office",
+  "Hotel",
+  "Airport",
+  "Factory",
+  "Data Center",
+  "School",
+  "University",
+  "Residential",
+  "Other",
+];
+
+
+
 const fieldStyle: React.CSSProperties = {
   padding: "8px 10px",
   borderRadius: 8,
@@ -71,6 +101,8 @@ export default function Home() {
   const [panels, setPanels] = useState<Panel[]>([]);
 
   const [name, setName] = useState("");
+  const [projectCountry, setProjectCountry] = useState("");
+  const [buildingType, setBuildingType] = useState("");
   const [selectedParent, setSelectedParent] = useState<number | null>(null);
   const [type, setType] = useState<StructureType>("project");
   const [sortMode, setSortMode] = useState<SortMode>("alphabetical");
@@ -103,6 +135,7 @@ export default function Home() {
   const [connectedPanelId, setConnectedPanelId] = useState("");
   const [editingLoadId, setEditingLoadId] = useState<number | null>(null);
   const [isCopyDraft, setIsCopyDraft] = useState(false);
+  const [editingPanelId, setEditingPanelId] = useState<number | null>(null);
 
   const selectedNode = useMemo(
     () => structures.find((s) => s.id === selectedParent),
@@ -422,6 +455,31 @@ export default function Home() {
 const handleAddPanel = () => {
   if (!selectedNode) return;
   if (!panelName.trim()) return;
+  if (editingPanelId !== null) {
+  setPanels((prev) =>
+    prev.map((panel) =>
+      panel.id === editingPanelId
+        ? {
+            ...panel,
+            name: panelName.trim(),
+            panelType,
+            phaseType: panelPhaseType,
+            structureId: selectedNode.id,
+            description: panelDescription.trim() || undefined,
+          }
+        : panel
+    )
+  );
+
+  setEditingPanelId(null);
+
+  setPanelName("");
+  setPanelType("DB");
+  setPanelPhaseType("3P");
+  setPanelDescription("");
+
+  return;
+}
 
   const now = Date.now();
 
@@ -1040,6 +1098,30 @@ if (load.phaseType === "3P") {
   Detail
 </button>
 
+<button
+  onClick={(e) => {
+    e.stopPropagation();
+
+    setEditingPanelId(panel.id);
+
+    setPanelName(panel.name);
+    setPanelType(panel.panelType);
+    setPanelPhaseType(panel.phaseType);
+    setPanelDescription(panel.description || "");
+
+    setSelectedParent(panel.structureId);
+  }}
+  style={{
+    ...buttonStyle,
+    minWidth: 90,
+    background: "#334155",
+    color: "white",
+    cursor: "pointer",
+  }}
+>
+  Edit
+</button>
+
   <button
     onClick={(e) => {
       e.stopPropagation();
@@ -1499,6 +1581,32 @@ const renderLoadDetailsCard = (load: Load) => {
               onChange={(e) => setName(e.target.value)}
             />
 
+            <select
+              style={fieldStyle}
+              value={projectCountry}
+              onChange={(e) => setProjectCountry(e.target.value)}
+              >
+              <option value="">Select Country</option>
+              {countryOptions.map((country) => (
+              <option key={country} value={country}>
+              {country}
+              </option>
+              ))}
+            </select>
+
+            <select
+              style={fieldStyle}
+              value={buildingType}
+              onChange={(e) => setBuildingType(e.target.value)}
+              >
+              <option value="">Select Building Type</option>
+              {buildingTypeOptions.map((type) => (
+              <option key={type} value={type}>
+              {type}
+              </option>
+              ))}
+            </select>
+
             <button
               style={{ ...buttonStyle, cursor: "pointer" }}
               onClick={handleAddOrUpdate}
@@ -1627,13 +1735,13 @@ const renderLoadDetailsCard = (load: Load) => {
       onClick={handleAddPanel}
       disabled={!canAddPanel}
       style={{
-        ...buttonStyle,
-        cursor: canAddPanel ? "pointer" : "not-allowed",
-        opacity: canAddPanel ? 1 : 0.5,
-        gridColumn: "span 2",
+      ...buttonStyle,
+      cursor: canAddPanel ? "pointer" : "not-allowed",
+      opacity: canAddPanel ? 1 : 0.5,
+      gridColumn: "span 2",
       }}
-    >
-      Add Panel
+      >
+      {editingPanelId !== null ? "Update Panel" : "Add Panel"}
     </button>
   </div>
 
@@ -1933,30 +2041,192 @@ const renderLoadDetailsCard = (load: Load) => {
       </h2>
 
       <div
-        style={{
-          lineHeight: 1.8,
-          opacity: 0.9,
-          fontSize: 15,
-        }}
-      >
-        <p>
-          Currist is an electrical design and calculation platform developed
-          to help engineers create project structures, define electrical loads,
-          assign loads to panels, and calculate building-level and panel-level
-          electrical summaries.
-        </p>
+  style={{
+    lineHeight: 1.8,
+    opacity: 0.9,
+    fontSize: 15,
+    maxHeight: 420,
+    overflowY: "auto",
+  }}
+>
+  <h3>🚀 CURRENT VERSION</h3>
 
-        <p>
-          With Currist, users can organize projects by building, block, floor,
-          and room; add catalog-based or manual loads; evaluate installed
-          power, estimated current, phase distribution, load character, and
-          power factor.
-        </p>
+  <div>✅ Project / Building / Block / Floor / Room Structure</div>
 
-        <p>
-          This platform is currently under active development.
-        </p>
-      </div>
+  <div>✅ Load Management</div>
+  <div>- Create Load</div>
+  <div>- Edit Load</div>
+  <div>- Copy Load</div>
+  <div>- Delete Load</div>
+  <div>- Load Detail Popup</div>
+
+  <br />
+
+  <div>✅ Panel Management</div>
+  <div>- Create Panel</div>
+  <div>- Edit Panel</div>
+  <div>- Delete Panel</div>
+  <div>- Panel Detail Popup</div>
+
+  <br />
+
+  <div>✅ Panel Summary</div>
+  <div>- Installed Power</div>
+  <div>- Current</div>
+  <div>- Load Count</div>
+  <div>- P-Q-S Calculation</div>
+  <div>- Average Cos φ</div>
+  <div>- R-S-T Distribution</div>
+
+  <br />
+
+  <div>✅ Country Selection</div>
+  <div>✅ Building Type Selection</div>
+
+  <br />
+
+  <div>✅ Created At / Last Edited</div>
+
+  <br />
+
+  <div>✅ Connected Panel Validation</div>
+  <div>- 3 Phase loads cannot be connected to 1 Phase panels</div>
+
+  <hr style={{ margin: "16px 0", borderColor: "#334155" }} />
+
+  <h3>🔄 IN PROGRESS</h3>
+
+  <div>□ Panel Copy With Loads</div>
+
+  <div>□ Panel Export to Excel</div>
+
+  <div>□ Full Location Chain</div>
+  <div>- Project</div>
+  <div>- Building</div>
+  <div>- Block</div>
+  <div>- Floor</div>
+  <div>- Room</div>
+
+  <br />
+
+  <div>□ Country Based Time Zone</div>
+
+  <hr style={{ margin: "16px 0", borderColor: "#334155" }} />
+
+  <h3>📋 PLANNED FEATURES</h3>
+
+  <div>□ Diversity Factor</div>
+
+  <br />
+
+  <div>□ Mutually Exclusive Loads</div>
+
+  <div style={{ marginLeft: 12 }}>
+    Example:
+  </div>
+
+  <div style={{ marginLeft: 24 }}>CWP-03</div>
+  <div style={{ marginLeft: 24 }}>HWP-03</div>
+
+  <div style={{ marginLeft: 12 }}>
+    These loads never operate simultaneously.
+  </div>
+
+  <div style={{ marginLeft: 12 }}>
+    The calculation will use the larger load instead of summing both loads.
+  </div>
+
+  <br />
+
+  <div>□ Demand Factor</div>
+
+  <div>□ Coincidence Factor</div>
+
+  <hr style={{ margin: "16px 0", borderColor: "#334155" }} />
+
+  <h3>⚡ ELECTRICAL CALCULATIONS</h3>
+
+  <div>□ Compensation Calculation</div>
+
+  <div>□ Transformer Selection</div>
+
+  <div>□ Generator Selection</div>
+
+  <div>□ UPS Selection</div>
+
+  <hr style={{ margin: "16px 0", borderColor: "#334155" }} />
+
+  <h3>🔌 CABLE ENGINEERING</h3>
+
+  <div>□ Cable Sizing</div>
+
+  <div>□ Voltage Drop Calculation</div>
+
+  <div>□ Cable Length Summary</div>
+
+  <div>□ Project Cable Report</div>
+
+  <hr style={{ margin: "16px 0", borderColor: "#334155" }} />
+
+  <h3>📤 EXPORT & COMMUNICATION</h3>
+
+  <div>□ Excel Export</div>
+
+  <div>□ PDF Export</div>
+
+  <div>□ Email Export</div>
+
+  <hr style={{ margin: "16px 0", borderColor: "#334155" }} />
+
+  <h3>🏭 PANEL MANUFACTURER WORKFLOW</h3>
+
+  <div>□ Freeze Panel</div>
+
+  <div>□ Send Frozen Panel To Supplier</div>
+
+  <div>□ Revision Tracking</div>
+
+  <div>□ Revision Summary Mail</div>
+
+  <br />
+
+  <div>Examples:</div>
+
+  <div>- Pump-03 deleted</div>
+  <div>- Fan-02 power changed (3.0 kW → 5.5 kW)</div>
+  <div>- Chiller-01 renamed</div>
+  <div>- New load added</div>
+
+  <hr style={{ margin: "16px 0", borderColor: "#334155" }} />
+
+  <h3>📱 PLATFORM</h3>
+
+  <div>□ Mobile Responsive</div>
+
+  <div>□ Tablet Responsive</div>
+
+  <hr style={{ margin: "16px 0", borderColor: "#334155" }} />
+
+  <h3>📦 Version</h3>
+
+  <div>Version: 0.4.0</div>
+
+  <div style={{ marginTop: 10 }}>
+  <strong>Developed By:</strong> Ergin Yurttaş
+</div>
+
+<div>
+  <strong>Contact:</strong> erginyurttas@gmail.com
+</div>
+
+  <div style={{ marginTop: 12 }}>
+  <strong>Last Update:</strong> June 5, 2026 2:50:13 PM
+</div>
+
+<ul>
+  
+</ul>
+</div>
 
       <div
         style={{
@@ -1966,19 +2236,19 @@ const renderLoadDetailsCard = (load: Load) => {
         }}
       >
         <div
-  style={{
-    display: "flex",
-    justifyContent: "flex-end",
-    gap: 10,
-    marginTop: 24,
-  }}
->
-  <button
-    onClick={() => {
-      setWelcomeOpen(false);
-      setHelpOpen(true);
-    }}
-    style={{
+          style={{
+            display: "flex",
+            justifyContent: "flex-end",
+            gap: 10,
+            marginTop: 24,
+            }}
+          >
+          <button
+            onClick={() => {
+              setWelcomeOpen(false);
+              setHelpOpen(true);
+            }}
+            style={{
       background: "#1e293b",
       border: "1px solid #334155",
       padding: "10px 18px",
@@ -2157,7 +2427,103 @@ const renderLoadDetailsCard = (load: Load) => {
   </>
 )}
 
+{selectedPanelDetail && (
+  <>
+    <div
+      onClick={() => setSelectedPanelDetail(null)}
+      style={{
+        position: "fixed",
+        inset: 0,
+        background: "rgba(15, 23, 42, 0.45)",
+        zIndex: 9998,
+      }}
+    />
 
+    <div
+      style={{
+        position: "fixed",
+        top: "50%",
+        left: "50%",
+        transform: "translate(-50%, -50%)",
+        width: 520,
+        maxWidth: "calc(100vw - 40px)",
+        background: "#111827",
+        border: "1px solid #334155",
+        borderRadius: 16,
+        padding: 20,
+        zIndex: 9999,
+        boxShadow: "0 20px 50px rgba(0,0,0,0.35)",
+        lineHeight: 1.8,
+      }}
+    >
+      <h3 style={{ marginTop: 0 }}>Panel Detail</h3>
+
+      <div><strong>Panel Name:</strong> {selectedPanelDetail.name}</div>
+      <div><strong>Panel Type:</strong> {selectedPanelDetail.panelType}</div>
+      <div><strong>Phase:</strong> {selectedPanelDetail.phaseType}</div>
+      <div><strong>Description:</strong> {selectedPanelDetail.description || "-"}</div>
+
+      {(() => {
+        const locationNode = structures.find(
+          (s) => s.id === selectedPanelDetail.structureId
+          );
+
+          return (
+          <div>
+          <strong>Location:</strong>{" "}
+          {locationNode ? locationNode.name : "-"}
+          </div>
+        );
+      })()}
+
+      <hr style={{ margin: "14px 0", borderColor: "#334155" }} />
+
+{(() => {
+  const panelSummary = panelSummaries.find(
+    (summary) => summary.panelId === selectedPanelDetail.id
+  );
+
+  return (
+    <>
+      <div><strong>Total Power:</strong> {formatNumber(panelSummary?.totalKw ?? 0)} kW</div>
+      <div><strong>Total Current:</strong> {formatNumber(panelSummary?.totalCurrent ?? 0)} A</div>
+      <div><strong>Load Count:</strong> {panelSummary?.loadCount ?? 0}</div>
+
+      <div><strong>P:</strong> {formatNumber(panelSummary?.panelP ?? 0)} kW</div>
+      <div><strong>Q:</strong> {formatNumber(panelSummary?.panelQ ?? 0)} kVAr</div>
+      <div><strong>S:</strong> {formatNumber(panelSummary?.panelS ?? 0)} kVA</div>
+      <div><strong>Avg. Cos φ:</strong> {formatNumber(panelSummary?.averageCosPhi ?? 1, 2)}</div>
+
+      <hr style={{ margin: "14px 0", borderColor: "#334155" }} />
+
+      <div><strong>R Phase:</strong> {formatNumber(panelSummary?.panelR ?? 0)} kW</div>
+      <div><strong>S Phase:</strong> {formatNumber(panelSummary?.panelSPhase ?? 0)} kW</div>
+      <div><strong>T Phase:</strong> {formatNumber(panelSummary?.panelT ?? 0)} kW</div>
+    </>
+  );
+})()}
+
+      <div>
+        <strong>Created At:</strong>{" "}
+        {new Date(selectedPanelDetail.createdAt).toLocaleString("tr-TR", {
+          timeZone: "Europe/Istanbul",
+        })}
+      </div>
+
+      <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 18 }}>
+        <button
+          onClick={() => setSelectedPanelDetail(null)}
+          style={{
+            ...buttonStyle,
+            cursor: "pointer",
+          }}
+        >
+          Close
+        </button>
+      </div>
+    </div>
+  </>
+)}
 
       </div>
     </div>
