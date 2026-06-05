@@ -2183,6 +2183,21 @@ const renderLoadDetailsCard = (load: Load) => {
   <div>- Average Cos φ</div>
   <div>- R-S-T Distribution</div>
 
+  <div>✅ Panel Collapse / Expand</div>
+
+  <div>✅ Panel Based View</div>
+  <div>- Loads grouped under panels</div>
+  <div>- Cleaner structure tree</div>
+
+  <div>✅ Unassigned Loads</div>
+  <div>- Loads without panel assignment</div>
+  <div>- Automatic relocation after panel assignment</div>
+
+  <div>✅ Panel Copy With Loads (Beta)</div>
+  <div>- Copy panel together with connected loads</div>
+  <div>- New panel name validation</div>
+  <div>- New project code validation</div>
+
   <br />
 
   <div>✅ Country Selection</div>
@@ -2201,7 +2216,10 @@ const renderLoadDetailsCard = (load: Load) => {
 
   <h3>🔄 IN PROGRESS</h3>
 
-  <div>□ Panel Copy With Loads</div>
+  <div>□ Panel Copy With Loads (Advanced)</div>
+  <div>- Smart renaming suggestions</div>
+  <div>- Batch project code editing</div>
+  <div>- Revision aware copy</div>
 
   <div>□ Panel Export to Excel</div>
 
@@ -2311,13 +2329,15 @@ const renderLoadDetailsCard = (load: Load) => {
 
   <h3>🏭 PANEL MANUFACTURER WORKFLOW</h3>
 
-<div>□ Freeze Panel</div>
+<div>□ Frozen Panel Status</div>
 
-<div>□ Send Frozen Panel To Supplier</div>
+<div>□ Supplier Email Database</div>
 
-<div>□ Revision Tracking</div>
+<div>□ Automatic Revision Detection</div>
 
-<div>□ Revision Summary Mail</div>
+<div>□ Revision Comparison Report</div>
+
+<div>□ Panel Bill Of Materials (BOM)</div>
 
 <br />
 
@@ -2388,7 +2408,7 @@ const renderLoadDetailsCard = (load: Load) => {
 
   <h3>📦 Version</h3>
 
-  <div>Version: 0.4.0</div>
+  <div>Version: 0.5.0</div>
 
   <div style={{ marginTop: 10 }}>
   <strong>Developed By:</strong> Ergin Yurttaş
