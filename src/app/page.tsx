@@ -2168,36 +2168,110 @@ const renderLoadDetailsCard = (load: Load) => {
 
   <hr style={{ margin: "16px 0", borderColor: "#334155" }} />
 
-  <h3>📤 EXPORT & COMMUNICATION</h3>
+  <h3>📤 EXPORT / IMPORT & COMMUNICATION</h3>
 
-  <div>□ Excel Export</div>
+<div>□ Excel Export</div>
+<div>- Panel Export</div>
+<div>- Load List Export</div>
+<div>- Project Summary Export</div>
+<div>- Cable Summary Export</div>
 
-  <div>□ PDF Export</div>
+<br />
 
-  <div>□ Email Export</div>
+<div>□ Excel Import</div>
+<div>- Project Structure Import</div>
+<div>- Building / Block / Floor / Room Import</div>
+<div>- Panel Import</div>
+<div>- Load Import</div>
+<div>- Auto Relink Panels & Loads</div>
+<div>- Import Validation</div>
+<div>- Import Error Report</div>
 
-  <hr style={{ margin: "16px 0", borderColor: "#334155" }} />
+<br />
+
+<div>□ Save / Open Project File</div>
+<div>- Save Currist Project</div>
+<div>- Open Existing Currist Project</div>
+<div>- Future .currist File Format</div>
+
+<br />
+
+<div>□ PDF Export</div>
+
+<div>□ Email Export</div>
+<div>- Send exported files by email</div>
+<div>- Send panel package to supplier</div>
+
+<hr style={{ margin: "16px 0", borderColor: "#334155" }} />
 
   <h3>🏭 PANEL MANUFACTURER WORKFLOW</h3>
 
-  <div>□ Freeze Panel</div>
+<div>□ Freeze Panel</div>
 
-  <div>□ Send Frozen Panel To Supplier</div>
+<div>□ Send Frozen Panel To Supplier</div>
 
-  <div>□ Revision Tracking</div>
+<div>□ Revision Tracking</div>
 
-  <div>□ Revision Summary Mail</div>
+<div>□ Revision Summary Mail</div>
 
-  <br />
+<br />
 
-  <div>Examples:</div>
+<div>□ Panel Dimensions Calculation</div>
+<div>- Width</div>
+<div>- Height</div>
+<div>- Depth</div>
+<div>- Estimated enclosure size based on loads and components</div>
 
-  <div>- Pump-03 deleted</div>
-  <div>- Fan-02 power changed (3.0 kW → 5.5 kW)</div>
-  <div>- Chiller-01 renamed</div>
-  <div>- New load added</div>
+<br />
 
-  <hr style={{ margin: "16px 0", borderColor: "#334155" }} />
+<div>□ Panel Environment Type</div>
+<div>- Indoor Panel</div>
+<div>- Outdoor Panel</div>
+<div>- IP Rating Suggestion</div>
+<div>- Ventilation / Cooling Requirement</div>
+
+<br />
+
+<div>□ Panel Component List</div>
+<div>- Main Switch / MCCB</div>
+<div>- Feeder Breakers</div>
+<div>- Contactors</div>
+<div>- Motor Protection Switches</div>
+<div>- Soft Starters</div>
+<div>- VFDs</div>
+<div>- Control Transformer</div>
+<div>- Power Supply</div>
+<div>- Terminals</div>
+<div>- Cable Glands</div>
+
+<br />
+
+<div>□ Analyzer / Energy Meter Selection</div>
+<div>- Main Incomer Analyzer</div>
+<div>- Feeder Analyzer</div>
+<div>- Communication Protocol Selection</div>
+<div>- Modbus RTU</div>
+<div>- Modbus TCP/IP</div>
+<div>- Bacnet MSTP</div>
+<div>- Bacnet IP</div>
+
+<br />
+
+<div>□ Panel Specification Generation</div>
+<div>- Technical Specification</div>
+<div>- Component Schedule</div>
+<div>- Supplier Ready Documentation</div>
+
+<br />
+
+<div>Examples:</div>
+
+<div>- Pump-03 deleted</div>
+<div>- Fan-02 power changed (3.0 kW → 5.5 kW)</div>
+<div>- Chiller-01 renamed</div>
+<div>- New load added</div>
+
+<hr style={{ margin: "16px 0", borderColor: "#334155" }} />
 
   <h3>📱 PLATFORM</h3>
 
@@ -2220,7 +2294,7 @@ const renderLoadDetailsCard = (load: Load) => {
 </div>
 
   <div style={{ marginTop: 12 }}>
-  <strong>Last Update:</strong> June 5, 2026 2:50:13 PM
+  <strong>Last Update:</strong> June 5, 2026 2:50npm run build:13 PM
 </div>
 
 <ul>
