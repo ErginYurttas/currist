@@ -136,6 +136,10 @@ export default function Home() {
   const [editingLoadId, setEditingLoadId] = useState<number | null>(null);
   const [isCopyDraft, setIsCopyDraft] = useState(false);
   const [editingPanelId, setEditingPanelId] = useState<number | null>(null);
+  const [copyPanelSource, setCopyPanelSource] = useState<Panel | null>(null);
+  const [copyPanelName, setCopyPanelName] = useState("");
+  const [copyLoadProjectCodes, setCopyLoadProjectCodes] = useState<Record<number, string>>({});
+  const [expandedPanels, setExpandedPanels] = useState<Record<number, boolean>>({});
 
   const selectedNode = useMemo(
     () => structures.find((s) => s.id === selectedParent),
@@ -781,6 +785,13 @@ const handleCopyLoad = (load: Load) => {
   }, 0);
 };
 
+const togglePanelExpand = (panelId: number) => {
+  setExpandedPanels((prev) => ({
+    ...prev,
+    [panelId]: !(prev[panelId] ?? true),
+  }));
+};
+
 const getPanelsByNode = (nodeId: number) => {
   return panels
     .filter((panel) => panel.structureId === nodeId)
@@ -1036,10 +1047,16 @@ if (load.phaseType === "3P") {
     #f59e0b ${phaseSegments[0].value + phaseSegments[1].value}% 100%
   )`;
 
-    const renderPanelCard = (panel: Panel) => {
+  const renderPanelCard = (panel: Panel) => {
   const panelSummary = panelSummaries.find(
     (summary) => summary.panelId === panel.id
   );
+
+  const panelLoads = loads.filter(
+  (load) => load.connectedPanelId === panel.id
+);
+
+const isPanelExpanded = expandedPanels[panel.id] ?? true;
 
   return (
     <div
@@ -1052,24 +1069,63 @@ if (load.phaseType === "3P") {
         borderRadius: 8,
       }}
     >
-      <div style={{ fontSize: 14 }}>
-        <strong>{panel.name}</strong> ({panel.panelType})
-      </div>
+      <div
+  style={{
+    display: "flex",
+    alignItems: "center",
+    gap: 8,
+    fontSize: 14,
+  }}
+>
+  <button
+    onClick={(e) => {
+      e.stopPropagation();
+      togglePanelExpand(panel.id);
+    }}
+    style={{
+      width: 26,
+      height: 26,
+      borderRadius: 6,
+      border: "1px solid #334155",
+      background: "#0f172a",
+      color: "white",
+      cursor: "pointer",
+    }}
+  >
+    {isPanelExpanded ? "▼" : "▶"}
+  </button>
+
+  <strong>{panel.name}</strong>
+  <span>({panel.panelType})</span>
+</div>
 
       <div style={{ marginTop: 4, opacity: 0.85 }}>
         Phase: {panel.phaseType}
       </div>
 
       <div style={{ marginTop: 6, fontSize: 13, lineHeight: 1.6 }}>
-        <div>Total Power: {formatNumber(panelSummary?.totalKw ?? 0)} kW</div>
-        <div>Total Current: {formatNumber(panelSummary?.totalCurrent ?? 0)} A</div>
-        <div>Load Count: {panelSummary?.loadCount ?? 0}</div>
+      <div>Total Power: {formatNumber(panelSummary?.totalKw ?? 0)} kW</div>
+      <div>Total Current: {formatNumber(panelSummary?.totalCurrent ?? 0)} A</div>
+      <div>Load Count: {panelSummary?.loadCount ?? 0}</div>
+      </div>
+
+      {isPanelExpanded && (
+        <div style={{ marginTop: 6, fontSize: 13, lineHeight: 1.6 }}>
+        
+        
+        
         <div>
         R: {formatNumber(panelSummary?.panelR ?? 0)} kW | S:{" "}
         {formatNumber(panelSummary?.panelSPhase ?? 0)} kW | T:{" "}
         {formatNumber(panelSummary?.panelT ?? 0)} kW
+        {panelLoads.length > 0 && (
+        <div style={{ marginTop: 10, paddingLeft: 18 }}>
+        {panelLoads.map(renderLoadCard)}
+        </div>
+        )}
         </div>
       </div>
+      )}
 
 
 
@@ -1096,6 +1152,35 @@ if (load.phaseType === "3P") {
   }}
 >
   Detail
+</button>
+
+<button
+  onClick={(e) => {
+    e.stopPropagation();
+
+    const panelLoads = loads.filter(
+      (load) => load.connectedPanelId === panel.id
+    );
+
+    setCopyPanelSource(panel);
+    setCopyPanelName("");
+
+    setCopyLoadProjectCodes(
+      panelLoads.reduce<Record<number, string>>((acc, load) => {
+        acc[load.id] = "";
+        return acc;
+      }, {})
+    );
+  }}
+  style={{
+    ...buttonStyle,
+    minWidth: 90,
+    background: "#22c55e",
+    color: "#0f172a",
+    cursor: "pointer",
+  }}
+>
+  Copy
 </button>
 
 <button
@@ -1324,13 +1409,32 @@ const renderLoadDetailsCard = (load: Load) => {
   );
 };
 
-    const renderLoads = (roomId: number) => {
-    const roomLoads = getLoadsByRoom(roomId);
+  const renderUnassignedLoads = (roomId: number) => {
+  const unassignedLoads = getLoadsByRoom(roomId).filter(
+    (load) => load.connectedPanelId === undefined
+  );
 
-    if (roomLoads.length === 0) return null;
+  if (unassignedLoads.length === 0) return null;
 
-    return <div style={{ marginTop: 8, marginLeft: 36 }}>{roomLoads.map(renderLoadCard)}</div>;
-  };
+  return (
+    <div
+      style={{
+        marginTop: 8,
+        marginLeft: 36,
+        padding: "10px 12px",
+        border: "1px dashed #64748b",
+        background: "#0f172a",
+        borderRadius: 8,
+      }}
+    >
+      <div style={{ fontSize: 14, marginBottom: 8 }}>
+        <strong>Unassigned Loads</strong>
+      </div>
+
+      {unassignedLoads.map(renderLoadCard)}
+    </div>
+  );
+};
 
   const renderTree = (parentId: number | null = null, level = 0) => {
     return (
@@ -1367,7 +1471,8 @@ const renderLoadDetailsCard = (load: Load) => {
               </div>
 
               {renderPanels(item.id)}
-              {item.type === "room" && renderLoads(item.id)}
+              {/* {item.type === "room" && renderLoads(item.id)} */}
+              {item.type === "room" && renderUnassignedLoads(item.id)}
 
               {child && !collapsed && <div>{renderTree(item.id, level + 1)}</div>}
             </div>
@@ -2294,7 +2399,7 @@ const renderLoadDetailsCard = (load: Load) => {
 </div>
 
   <div style={{ marginTop: 12 }}>
-  <strong>Last Update:</strong> June 5, 2026 2:50npm run build:13 PM
+  <strong>Last Update:</strong> June 6, 2026 0:27:19 AM
 </div>
 
 <ul>
@@ -2501,10 +2606,14 @@ const renderLoadDetailsCard = (load: Load) => {
   </>
 )}
 
-{selectedPanelDetail && (
+{copyPanelSource && (
   <>
     <div
-      onClick={() => setSelectedPanelDetail(null)}
+      onClick={() => {
+        setCopyPanelSource(null);
+        setCopyPanelName("");
+        setCopyLoadProjectCodes({});
+      }}
       style={{
         position: "fixed",
         inset: 0,
@@ -2519,8 +2628,10 @@ const renderLoadDetailsCard = (load: Load) => {
         top: "50%",
         left: "50%",
         transform: "translate(-50%, -50%)",
-        width: 520,
+        width: 620,
         maxWidth: "calc(100vw - 40px)",
+        maxHeight: "calc(100vh - 80px)",
+        overflowY: "auto",
         background: "#111827",
         border: "1px solid #334155",
         borderRadius: 16,
@@ -2530,69 +2641,169 @@ const renderLoadDetailsCard = (load: Load) => {
         lineHeight: 1.8,
       }}
     >
-      <h3 style={{ marginTop: 0 }}>Panel Detail</h3>
+      <h3 style={{ marginTop: 0 }}>Copy Panel With Loads</h3>
 
-      <div><strong>Panel Name:</strong> {selectedPanelDetail.name}</div>
-      <div><strong>Panel Type:</strong> {selectedPanelDetail.panelType}</div>
-      <div><strong>Phase:</strong> {selectedPanelDetail.phaseType}</div>
-      <div><strong>Description:</strong> {selectedPanelDetail.description || "-"}</div>
-
-      {(() => {
-        const locationNode = structures.find(
-          (s) => s.id === selectedPanelDetail.structureId
-          );
-
-          return (
-          <div>
-          <strong>Location:</strong>{" "}
-          {locationNode ? locationNode.name : "-"}
-          </div>
-        );
-      })()}
-
-      <hr style={{ margin: "14px 0", borderColor: "#334155" }} />
-
-{(() => {
-  const panelSummary = panelSummaries.find(
-    (summary) => summary.panelId === selectedPanelDetail.id
-  );
-
-  return (
-    <>
-      <div><strong>Total Power:</strong> {formatNumber(panelSummary?.totalKw ?? 0)} kW</div>
-      <div><strong>Total Current:</strong> {formatNumber(panelSummary?.totalCurrent ?? 0)} A</div>
-      <div><strong>Load Count:</strong> {panelSummary?.loadCount ?? 0}</div>
-
-      <div><strong>P:</strong> {formatNumber(panelSummary?.panelP ?? 0)} kW</div>
-      <div><strong>Q:</strong> {formatNumber(panelSummary?.panelQ ?? 0)} kVAr</div>
-      <div><strong>S:</strong> {formatNumber(panelSummary?.panelS ?? 0)} kVA</div>
-      <div><strong>Avg. Cos φ:</strong> {formatNumber(panelSummary?.averageCosPhi ?? 1, 2)}</div>
-
-      <hr style={{ margin: "14px 0", borderColor: "#334155" }} />
-
-      <div><strong>R Phase:</strong> {formatNumber(panelSummary?.panelR ?? 0)} kW</div>
-      <div><strong>S Phase:</strong> {formatNumber(panelSummary?.panelSPhase ?? 0)} kW</div>
-      <div><strong>T Phase:</strong> {formatNumber(panelSummary?.panelT ?? 0)} kW</div>
-    </>
-  );
-})()}
-
-      <div>
-        <strong>Created At:</strong>{" "}
-        {new Date(selectedPanelDetail.createdAt).toLocaleString("tr-TR", {
-          timeZone: "Europe/Istanbul",
-        })}
+      <div style={{ marginBottom: 12 }}>
+        <strong>Source Panel:</strong> {copyPanelSource.name} ({copyPanelSource.panelType})
       </div>
 
-      <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 18 }}>
+      <input
+        style={{
+          ...fieldStyle,
+          width: "100%",
+          boxSizing: "border-box",
+          marginBottom: 12,
+        }}
+        placeholder="New Panel Name"
+        value={copyPanelName}
+        onChange={(e) => setCopyPanelName(e.target.value)}
+      />
+
+      <div style={{ marginBottom: 8 }}>
+        <strong>Loads to Copy</strong>
+      </div>
+
+      {loads
+        .filter((load) => load.connectedPanelId === copyPanelSource.id)
+        .map((load) => (
+          <div
+            key={load.id}
+            style={{
+              display: "grid",
+              gridTemplateColumns: "1fr 1fr",
+              gap: 10,
+              marginBottom: 10,
+              alignItems: "center",
+            }}
+          >
+            <div>
+              {load.projectCode} - {load.description}
+            </div>
+
+            <input
+              style={fieldStyle}
+              placeholder="New Project Code"
+              value={copyLoadProjectCodes[load.id] || ""}
+              onChange={(e) =>
+                setCopyLoadProjectCodes((prev) => ({
+                  ...prev,
+                  [load.id]: e.target.value,
+                }))
+              }
+            />
+          </div>
+        ))}
+
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "flex-end",
+          gap: 10,
+          marginTop: 18,
+        }}
+      >
         <button
-          onClick={() => setSelectedPanelDetail(null)}
+          onClick={() => {
+            setCopyPanelSource(null);
+            setCopyPanelName("");
+            setCopyLoadProjectCodes({});
+          }}
+          style={{
+            ...buttonStyle,
+            background: "#334155",
+            color: "white",
+            cursor: "pointer",
+          }}
+        >
+          Cancel
+        </button>
+
+        <button
+          
+          onClick={() => {
+  if (!copyPanelName.trim()) {
+    window.alert("Please enter a new panel name.");
+    return;
+  }
+
+  const sourceLoads = loads.filter(
+    (load) => load.connectedPanelId === copyPanelSource.id
+  );
+
+  const missingCodes = sourceLoads.some(
+    (load) => !(copyLoadProjectCodes[load.id] || "").trim()
+  );
+
+  if (missingCodes) {
+    window.alert("Please enter new project codes for all loads.");
+    return;
+  }
+
+  const duplicatePanelName = panels.some(
+  (panel) =>
+    panel.name.trim().toLowerCase() === copyPanelName.trim().toLowerCase()
+);
+
+if (duplicatePanelName) {
+  window.alert("Panel name must be unique.");
+  return;
+}
+
+const newProjectCodes = sourceLoads.map((load) =>
+  (copyLoadProjectCodes[load.id] || "").trim().toLowerCase()
+);
+
+const hasDuplicateNewCodes =
+  new Set(newProjectCodes).size !== newProjectCodes.length;
+
+if (hasDuplicateNewCodes) {
+  window.alert("New project codes must be unique.");
+  return;
+}
+
+const existingProjectCodeConflict = loads.some((load) =>
+  newProjectCodes.includes(load.projectCode.trim().toLowerCase())
+);
+
+if (existingProjectCodeConflict) {
+  window.alert("One or more project codes already exist.");
+  return;
+}
+
+const now = Date.now();
+const newPanelId = now;
+
+const newPanel: Panel = {
+  ...copyPanelSource,
+  id: newPanelId,
+  name: copyPanelName.trim(),
+  createdAt: now,
+};
+
+const copiedLoads: Load[] = sourceLoads.map((load, index) => ({
+  ...load,
+  id: now + index + 1,
+  projectCode: (copyLoadProjectCodes[load.id] || "").trim(),
+  connectedPanelId: newPanelId,
+  createdAt: now + index + 1,
+  updatedAt: now + index + 1,
+}));
+
+setPanels((prev) => [...prev, newPanel]);
+setLoads((prev) => [...prev, ...copiedLoads]);
+
+setCopyPanelSource(null);
+setCopyPanelName("");
+setCopyLoadProjectCodes({});
+
+}}
+
           style={{
             ...buttonStyle,
             cursor: "pointer",
           }}
         >
-          Close
+          Create Copy
         </button>
       </div>
     </div>
