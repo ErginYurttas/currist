@@ -1,4 +1,3 @@
-
 export type StructureType = "project" | "building" | "block" | "floor" | "room";
 export type SortMode = "alphabetical" | "created";
 export type LoadType = "Pump" | "Fan" | "AHU" | "Manual";
@@ -32,6 +31,7 @@ export type Structure = {
   type: StructureType;
   parentId: number | null;
   createdAt: number;
+  optionalName?: string;
 };
 
 export type CatalogItem = {
@@ -64,4 +64,5 @@ export type Load = {
   loadCharacter?: LoadCharacter;
   cosPhi?: number;
   cableLengthM?: number;
+  note?: string;
 };
