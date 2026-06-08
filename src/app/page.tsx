@@ -135,6 +135,23 @@ export default function Home() {
   const [panelType, setPanelType] = useState<PanelType>("DB");
   const [panelPhaseType, setPanelPhaseType] = useState<PanelPhaseType>("3P");
   const [panelDescription, setPanelDescription] = useState("");
+  const [panelEnvironment, setPanelEnvironment] = useState<"Indoor" | "Outdoor">( "Indoor");
+  const [panelIpRating, setPanelIpRating] = useState("IP31");
+  const [panelSupplyPanelId, setPanelSupplyPanelId] = useState("");
+  const getAvailableIpRatings = () => {if (panelEnvironment === "Outdoor") {return ["IP54", "IP65", "IP66"];
+  }
+
+  return ["IP31", "IP42", "IP54"];
+};
+useEffect(() => {
+  if (panelType === "Packaged Panel") return;
+
+  const availableIpRatings = getAvailableIpRatings();
+
+  if (!availableIpRatings.includes(panelIpRating)) {
+    setPanelIpRating(availableIpRatings[0]);
+  }
+}, [panelEnvironment, panelIpRating, panelType]);
   const [connectedPanelId, setConnectedPanelId] = useState("");
   const [editingLoadId, setEditingLoadId] = useState<number | null>(null);
   const [isCopyDraft, setIsCopyDraft] = useState(false);
@@ -150,15 +167,20 @@ export default function Home() {
   );
 
   const isCatalogLoad =
-    loadType === "Pump" || loadType === "Fan" || loadType === "AHU";
-  const isManualLoad = loadType === "Manual";
-  const canAddLoad = selectedNode?.type === "room";
-  const canAddPanel =
+  loadType === "Pump" || loadType === "Fan" || loadType === "AHU";
+
+const isManualLoad = loadType === "Manual";
+
+const canAddLoad = selectedNode?.type === "room";
+
+const canAddPanel =
   selectedNode?.type === "project" ||
   selectedNode?.type === "building" ||
   selectedNode?.type === "block" ||
   selectedNode?.type === "floor" ||
   selectedNode?.type === "room";
+
+const isPackagedPanel = panelType === "Packaged Panel";
 
   const getAllowedChildTypes = (): StructureType[] => {
   if (!selectedNode) return ["project"];
@@ -470,6 +492,13 @@ export default function Home() {
     }
   }, [loadType, brand, series, model, isManualLoad, editingLoadId, isCopyDraft]);
 
+  useEffect(() => {
+  if (panelType === "Packaged Panel") {
+    setPanelEnvironment("Indoor");
+    setPanelIpRating("");
+  }
+}, [panelType]);
+
 const handleAddPanel = () => {
   if (!selectedNode) return;
   if (!panelName.trim()) return;
@@ -484,6 +513,10 @@ const handleAddPanel = () => {
             phaseType: panelPhaseType,
             structureId: selectedNode.id,
             description: panelDescription.trim() || undefined,
+            environment: isPackagedPanel ? undefined : panelEnvironment,
+            ipRating: isPackagedPanel ? undefined : panelIpRating,
+            supplyPanelId:
+            panelSupplyPanelId.trim() === "" ? undefined : Number(panelSupplyPanelId),
           }
         : panel
     )
@@ -495,6 +528,9 @@ const handleAddPanel = () => {
   setPanelType("DB");
   setPanelPhaseType("3P");
   setPanelDescription("");
+  setPanelEnvironment("Indoor");
+  setPanelSupplyPanelId("");
+  setPanelIpRating("IP31");
 
   return;
 }
@@ -508,8 +544,14 @@ const handleAddPanel = () => {
     phaseType: panelPhaseType,
     structureId: selectedNode.id,
     description: panelDescription.trim() || undefined,
+    environment: isPackagedPanel ? undefined : panelEnvironment,
+    ipRating: isPackagedPanel ? undefined : panelIpRating,
+    supplyPanelId:
+    panelSupplyPanelId.trim() === "" ? undefined : Number(panelSupplyPanelId),
     createdAt: now,
   };
+
+
 
   setPanels((prev) => [...prev, newPanel]);
 
@@ -517,6 +559,9 @@ const handleAddPanel = () => {
   setPanelType("DB");
   setPanelPhaseType("3P");
   setPanelDescription("");
+  setPanelEnvironment("Indoor");
+  setPanelSupplyPanelId("");
+  setPanelIpRating("IP31");
 };
 
 const handleDeletePanel = (panelId: number) => {
@@ -816,6 +861,13 @@ const togglePanelExpand = (panelId: number) => {
 const getPanelsByNode = (nodeId: number) => {
   return panels
     .filter((panel) => panel.structureId === nodeId)
+    .filter(
+      (panel) =>
+        !(
+          panel.panelType === "Packaged Panel" &&
+          panel.supplyPanelId !== undefined
+        )
+    )
     .sort((a, b) =>
       a.name.localeCompare(b.name, undefined, {
         numeric: true,
@@ -951,6 +1003,12 @@ const panelSummaries = useMemo(() => {
       (load) => load.connectedPanelId === panel.id
     );
 
+    const childPackagedPanels = panels.filter(
+  (item) =>
+    item.panelType === "Packaged Panel" &&
+    item.supplyPanelId === panel.id
+);
+
     const totalKw = panelLoads.reduce(
       (sum, load) => sum + load.powerKw * load.quantity,
       0
@@ -1037,7 +1095,7 @@ if (load.phaseType === "3P") {
   panelR,
   panelSPhase,
   panelT,
-  loadCount: panelLoads.length,
+  loadCount: panelLoads.length + childPackagedPanels.length,
 };
 
 
@@ -1118,19 +1176,26 @@ const handleExportPanelToExcel = (panel: Panel) => {
   (load) => load.connectedPanelId === panel.id
 );
 
+const childPackagedPanels = panels.filter(
+  (item) =>
+    item.panelType === "Packaged Panel" &&
+    item.supplyPanelId === panel.id
+);
+
 const isPanelExpanded = expandedPanels[panel.id] ?? true;
 
   return (
     <div
       key={panel.id}
       style={{
-        padding: "10px 12px",
-        marginBottom: 8,
-        border: "1px solid #334155",
-        background: "#1e293b",
-        borderRadius: 8,
-      }}
-    >
+      padding: "10px 12px",
+      marginBottom: 8,
+      border: "1px solid #334155",
+      background:
+      panel.panelType === "Packaged Panel" ? "#1146e3" : "#1e293b",
+      borderRadius: 8,
+    }}
+  >
       <div
   style={{
     display: "flex",
@@ -1159,6 +1224,21 @@ const isPanelExpanded = expandedPanels[panel.id] ?? true;
 
   <strong>{panel.name}</strong>
   <span>({panel.panelType})</span>
+  {panel.panelType === "Packaged Panel" && (
+  <span
+    style={{
+      border: "1px solid #473bcb",
+      borderRadius: 999,
+      padding: "2px 8px",
+      fontSize: 11,
+      color: "#38bdf8",
+      background: "#0f172a",
+      fontWeight: 700,
+    }}
+  >
+    PACKAGED
+  </span>
+)}
 </div>
 
       <div
@@ -1195,11 +1275,206 @@ const isPanelExpanded = expandedPanels[panel.id] ?? true;
   </span>
 </div>
 
-      {isPanelExpanded && panelLoads.length > 0 && (
-      <div style={{ marginTop: 10, paddingLeft: 18 }}>
+      {isPanelExpanded &&
+  (panelLoads.length > 0 || childPackagedPanels.length > 0) && (
+    <div style={{ marginTop: 10, paddingLeft: 18 }}>
       {panelLoads.map(renderLoadCard)}
+
+      {childPackagedPanels.map((childPanel: Panel) => {
+  const childPanelLoads = loads.filter(
+    (load) => load.connectedPanelId === childPanel.id
+  );
+
+  const childPanelSummary = panelSummaries.find(
+    (summary) => summary.panelId === childPanel.id
+  );
+
+  const isChildPanelExpanded = expandedPanels[childPanel.id] ?? true;
+
+  return (
+    <div
+      key={childPanel.id}
+      style={{
+        padding: "8px 12px",
+        marginBottom: 6,
+        border: "1px solid #93c5fd",
+        background: "#1146e3",
+        borderRadius: 8,
+        fontSize: 13,
+        lineHeight: 1.6,
+      }}
+    >
+      <div
+  style={{
+    display: "flex",
+    alignItems: "center",
+    gap: 8,
+  }}
+>
+  <button
+    onClick={(e) => {
+      e.stopPropagation();
+      togglePanelExpand(childPanel.id);
+    }}
+    style={{
+      width: 24,
+      height: 24,
+      borderRadius: 6,
+      border: "1px solid #93c5fd",
+      background: "#0f172a",
+      color: "white",
+      cursor: "pointer",
+    }}
+  >
+    {isChildPanelExpanded ? "▼" : "▶"}
+  </button>
+
+  <strong>{childPanel.name}</strong>{" "}
+        <span
+          style={{
+            border: "1px solid #473bcb",
+            borderRadius: 999,
+            padding: "2px 8px",
+            fontSize: 11,
+            color: "#38bdf8",
+            background: "#0f172a",
+            fontWeight: 700,
+          }}
+        >
+          PACKAGED
+        </span>
       </div>
-      )}
+
+      <div
+  style={{
+    display: "flex",
+    gap: 6,
+    marginTop: 8,
+    marginBottom: 8,
+    flexWrap: "wrap",
+  }}
+>
+  <button
+    onClick={() => setSelectedPanelDetail(childPanel)}
+    style={{
+      ...buttonStyle,
+      minWidth: 60,
+      minHeight: 28,
+      background: "#0ea5e9",
+      color: "#0f172a",
+      cursor: "pointer",
+    }}
+  >
+    Detail
+  </button>
+
+  <button
+    onClick={() => {
+      setEditingPanelId(childPanel.id);
+
+      setPanelName(childPanel.name);
+      setPanelType(childPanel.panelType);
+      setPanelPhaseType(childPanel.phaseType);
+      setPanelDescription(childPanel.description || "");
+      setPanelEnvironment(childPanel.environment || "Indoor");
+      setPanelIpRating(childPanel.ipRating || "IP31");
+      setPanelSupplyPanelId(
+        childPanel.supplyPanelId !== undefined
+          ? String(childPanel.supplyPanelId)
+          : ""
+      );
+
+      setSelectedParent(childPanel.structureId);
+    }}
+    style={{
+      ...buttonStyle,
+      minWidth: 60,
+      minHeight: 28,
+      background: "#334155",
+      color: "white",
+      cursor: "pointer",
+    }}
+  >
+    Edit
+  </button>
+
+  <button
+    onClick={() => {
+      setCopyPanelSource(childPanel);
+      setCopyPanelName("");
+    }}
+    style={{
+      ...buttonStyle,
+      minWidth: 60,
+      minHeight: 28,
+      background: "#22c55e",
+      color: "#0f172a",
+      cursor: "pointer",
+    }}
+  >
+    Copy
+  </button>
+
+  <button
+    onClick={() => handleDeletePanel(childPanel.id)}
+    style={{
+      ...buttonStyle,
+      minWidth: 60,
+      minHeight: 28,
+      background: "#ef4444",
+      color: "white",
+      cursor: "pointer",
+    }}
+  >
+    Delete
+  </button>
+</div>
+
+      <div
+  style={{
+    marginTop: 8,
+    fontSize: 13,
+    display: "flex",
+    flexWrap: "wrap",
+    gap: 12,
+    alignItems: "center",
+    opacity: 0.9,
+  }}
+>
+  <span>Phase: {childPanel.phaseType}</span>
+
+  <span>
+    Power: {formatNumber(childPanelSummary?.totalKw ?? 0)} kW
+  </span>
+
+  <span>
+    Current: {formatNumber(childPanelSummary?.totalCurrent ?? 0)} A
+  </span>
+
+  <span>
+    Loads: {childPanelSummary?.loadCount ?? 0}
+  </span>
+
+  <span>
+    R:{formatNumber(childPanelSummary?.panelR ?? 0)}
+    {" | "}
+    S:{formatNumber(childPanelSummary?.panelSPhase ?? 0)}
+    {" | "}
+    T:{formatNumber(childPanelSummary?.panelT ?? 0)}
+  </span>
+</div>
+
+      {isChildPanelExpanded && childPanelLoads.length > 0 && (
+  <div style={{ marginTop: 8, paddingLeft: 12 }}>
+    {childPanelLoads.map(renderLoadCard)}
+  </div>
+)}
+    </div>
+  );
+})}
+      
+    </div>
+  )}
 
 
 
@@ -1304,6 +1579,11 @@ const isPanelExpanded = expandedPanels[panel.id] ?? true;
     setPanelType(panel.panelType);
     setPanelPhaseType(panel.phaseType);
     setPanelDescription(panel.description || "");
+    setPanelEnvironment(panel.environment || "Indoor");
+    setPanelIpRating(panel.ipRating || "IP31");
+    setPanelSupplyPanelId(
+    panel.supplyPanelId !== undefined ? String(panel.supplyPanelId) : ""
+    );
 
     setSelectedParent(panel.structureId);
   }}
@@ -1554,6 +1834,27 @@ const renderLoadDetailsCard = (load: Load) => {
       </div>
 
       <div>
+  Location:{" "}
+  {(() => {
+    const room = structures.find((s) => s.id === load.roomId);
+    const floor = structures.find((s) => s.id === room?.parentId);
+    const block = structures.find((s) => s.id === floor?.parentId);
+
+    return [
+      block?.name,
+      floor?.optionalName
+        ? `${floor.name} - ${floor.optionalName}`
+        : floor?.name,
+      room?.optionalName
+        ? `${room.name} - ${room.optionalName}`
+        : room?.name,
+    ]
+      .filter(Boolean)
+      .join(" / ");
+  })()}
+</div>
+
+      <div>
         {load.loadType === "Manual"
           ? `${load.manualLoadType || "-"}`
           : `${load.brand || "-"} / ${load.series || "-"} / ${load.model || "-"}`
@@ -1576,26 +1877,7 @@ const renderLoadDetailsCard = (load: Load) => {
         Character: {load.loadCharacter || "-"}
       </div>
 
-<div>
-  Location:{" "}
-  {(() => {
-    const room = structures.find((s) => s.id === load.roomId);
-    const floor = structures.find((s) => s.id === room?.parentId);
-    const block = structures.find((s) => s.id === floor?.parentId);
 
-    return [
-      block?.name,
-      floor?.optionalName
-        ? `${floor.name} - ${floor.optionalName}`
-        : floor?.name,
-      room?.optionalName
-        ? `${room.name} - ${room.optionalName}`
-        : room?.name,
-    ]
-      .filter(Boolean)
-      .join(" / ");
-  })()}
-</div>
 
       <div>
         Panel:{" "}
@@ -1641,6 +1923,259 @@ const renderLoadDetailsCard = (load: Load) => {
     <div style={{ marginTop: 8, marginLeft: 36 }}>
       {nodePanels.map(renderPanelCard)}
     </div>
+  );
+};
+
+const renderPanelDetailModal = (panel: Panel) => {
+  const panelSummary = panelSummaries.find(
+    (summary) => summary.panelId === panel.id
+  );
+
+  const panelLoads = loads.filter(
+    (load) => load.connectedPanelId === panel.id
+  );
+
+  const childPackagedPanels = panels.filter(
+  (item) =>
+    item.panelType === "Packaged Panel" &&
+    item.supplyPanelId === panel.id
+);
+
+  const supplyPanel = panels.find(
+  (item) => item.id === panel.supplyPanelId
+);
+
+  const panelLocation = structures.find(
+    (structure) => structure.id === panel.structureId
+  );
+
+  const getPanelLocationText = () => {
+  const current = structures.find((s) => s.id === panel.structureId);
+  const parent1 = structures.find((s) => s.id === current?.parentId);
+  const parent2 = structures.find((s) => s.id === parent1?.parentId);
+  const parent3 = structures.find((s) => s.id === parent2?.parentId);
+  const parent4 = structures.find((s) => s.id === parent3?.parentId);
+
+  return [parent4, parent3, parent2, parent1, current]
+    .filter(Boolean)
+    .map((item) =>
+      item?.optionalName
+        ? `${item.name} - ${item.optionalName}`
+        : item?.name
+    )
+    .join(" / ");
+};
+
+  return (
+    <>
+      <div
+        onClick={() => setSelectedPanelDetail(null)}
+        style={{
+          position: "fixed",
+          inset: 0,
+          background: "rgba(15, 23, 42, 0.65)",
+          zIndex: 10000,
+        }}
+      />
+
+      <div
+        style={{
+          position: "fixed",
+          top: "50%",
+          left: "50%",
+          transform: "translate(-50%, -50%)",
+          width: 760,
+          maxWidth: "calc(100vw - 40px)",
+          maxHeight: "calc(100vh - 80px)",
+          overflowY: "auto",
+          background: "#111827",
+          border: "1px solid #334155",
+          borderRadius: 18,
+          padding: 24,
+          zIndex: 10001,
+          boxShadow: "0 25px 60px rgba(0,0,0,0.45)",
+        }}
+      >
+        <h3
+  style={{
+    marginTop: 0,
+    color: "#0ea5e9",
+  }}
+>
+  Panel Detail
+</h3>
+
+        <div style={{ lineHeight: 1.8, fontSize: 14 }}>
+          <div><strong>Panel Name:</strong> {panel.name}</div>
+          <div><strong>Panel Type:</strong> {panel.panelType}</div>
+          <div><strong>Supply Panel:</strong>{" "}{supplyPanel ? supplyPanel.name : "-"}</div>
+          {panel.panelType === "Packaged Panel" && (
+          <div>
+          <strong>Panel Category:</strong> Packaged Panel
+          </div>
+          )}
+          <div><strong>Phase Type:</strong> {panel.phaseType}</div>
+          <div><strong>Environment:</strong> {panel.environment || "-"}</div>
+          <div><strong>IP Rating:</strong> {panel.ipRating || "-"}</div>
+          <div><strong>Description:</strong> {panel.description || "-"}</div>
+          <div><strong>Location:</strong> {getPanelLocationText() || "-"}</div>
+          <div>
+            <strong>Created:</strong>{" "}
+            {panel.createdAt ? new Date(panel.createdAt).toLocaleString() : "-"}
+          </div>
+        </div>
+
+        <hr style={{ margin: "16px 0", borderColor: "#334155" }} />
+
+        <h3>Electrical Summary</h3>
+
+        <div style={{ lineHeight: 1.8, fontSize: 14 }}>
+          <div>
+            <strong>Installed Power:</strong>{" "}
+            {formatNumber(panelSummary?.totalKw ?? 0)} kW
+          </div>
+
+          <div>
+            <strong>Current:</strong>{" "}
+            {formatNumber(panelSummary?.totalCurrent ?? 0)} A
+          </div>
+
+          <div>
+            <strong>Load Count:</strong>{" "}
+            {panelSummary?.loadCount ?? 0}
+          </div>
+
+          <div>
+            <strong>P:</strong>{" "}
+            {formatNumber(panelSummary?.panelP ?? 0)} kW
+          </div>
+
+          <div>
+            <strong>Q:</strong>{" "}
+            {(panelSummary?.panelQ ?? 0) > 0
+              ? `↑ ${formatNumber(panelSummary?.panelQ ?? 0)} kVAr`
+              : (panelSummary?.panelQ ?? 0) < 0
+              ? `↓ ${formatNumber(panelSummary?.panelQ ?? 0)} kVAr`
+              : `→ ${formatNumber(panelSummary?.panelQ ?? 0)} kVAr`}
+          </div>
+
+          <div>
+            <strong>S:</strong>{" "}
+            {formatNumber(panelSummary?.panelS ?? 0)} kVA
+          </div>
+
+          <div>
+            <strong>Average Cos φ:</strong>{" "}
+            {formatNumber(panelSummary?.averageCosPhi ?? 1, 2)}
+          </div>
+
+          <div>
+            <strong>R / S / T:</strong>{" "}
+            R: {formatNumber(panelSummary?.panelR ?? 0)} kW {" | "}
+            S: {formatNumber(panelSummary?.panelSPhase ?? 0)} kW {" | "}
+            T: {formatNumber(panelSummary?.panelT ?? 0)} kW
+          </div>
+        </div>
+
+        <hr style={{ margin: "16px 0", borderColor: "#334155" }} />
+
+        <h3>Connected Loads</h3>
+
+        {panelLoads.length === 0 && childPackagedPanels.length === 0 ? (
+          <div style={{ opacity: 0.75 }}>No connected loads.</div>
+        ) : (
+          <div>
+            {panelLoads.map((load) => (
+  <div
+    key={load.id}
+    style={{
+      padding: "8px 10px",
+      marginBottom: 8,
+      border: "1px solid #334155",
+      background: "#1e293b",
+      borderRadius: 8,
+      fontSize: 13,
+      lineHeight: 1.6,
+    }}
+  >
+    <div>
+      <strong>{load.projectCode}</strong> - {load.description}
+    </div>
+    <div>
+      {load.powerKw} kW × {load.quantity} ={" "}
+      {formatNumber(load.powerKw * load.quantity)} kW
+    </div>
+    <div>
+      Phase: {load.phaseType}
+      {load.phaseType === "1P" && load.phaseLine
+        ? ` / Line: ${load.phaseLine}`
+        : ""}
+    </div>
+    <div>
+      Character: {load.loadCharacter || "-"} / Cos φ:{" "}
+      {load.cosPhi ?? "-"}
+    </div>
+  </div>
+))}
+
+{childPackagedPanels.map((childPanel: Panel) => {
+  const childPanelLoads = loads.filter(
+    (load) => load.connectedPanelId === childPanel.id
+  );
+
+  return (
+    <div
+      key={childPanel.id}
+      style={{
+        padding: "8px 10px",
+        marginBottom: 8,
+        border: "1px solid #93c5fd",
+        background: "#1146e3",
+        borderRadius: 8,
+        fontSize: 13,
+        lineHeight: 1.6,
+      }}
+    >
+      <div>
+        <strong>{childPanel.name}</strong>{" "}
+        <span style={{ fontSize: 11 }}>[PACKAGED]</span>
+      </div>
+
+      {childPanelLoads.map((load) => (
+        <div key={load.id} style={{ marginLeft: 14, marginTop: 6 }}>
+          - <strong>{load.projectCode}</strong> - {load.description}
+        </div>
+      ))}
+    </div>
+  );
+})}
+
+            
+
+          </div>
+        )}
+
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "flex-end",
+            marginTop: 18,
+          }}
+        >
+          <button
+            onClick={() => setSelectedPanelDetail(null)}
+            style={{
+              ...buttonStyle,
+              background: "#0ea5e9",
+              color: "#0f172a",
+              cursor: "pointer",
+            }}
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    </>
   );
 };
 
@@ -2063,6 +2598,7 @@ const renderLoadDetailsCard = (load: Load) => {
       <option value="DB">DB</option>
       <option value="LP">LP</option>
       <option value="UPS DB">UPS DB</option>
+      <option value="Packaged Panel">Packaged Panel</option>
     </select>
 
     <select
@@ -2082,6 +2618,51 @@ const renderLoadDetailsCard = (load: Load) => {
       onChange={(e) => setPanelDescription(e.target.value)}
       disabled={!canAddPanel}
     />
+
+    <select
+  style={fieldStyle}
+  value={panelEnvironment}
+  onChange={(e) =>
+    setPanelEnvironment(e.target.value as "Indoor" | "Outdoor")
+  }
+  disabled={!canAddPanel || isPackagedPanel}
+>
+  <option value="Indoor">Indoor</option>
+  <option value="Outdoor">Outdoor</option>
+</select>
+
+<select
+  style={fieldStyle}
+  value={panelIpRating}
+  onChange={(e) => setPanelIpRating(e.target.value)}
+  disabled={!canAddPanel || isPackagedPanel}
+>
+  {getAvailableIpRatings().map((ip) => (
+    <option key={ip} value={ip}>
+      {ip}
+    </option>
+  ))}
+</select>
+
+{isPackagedPanel && (
+  <select
+    style={fieldStyle}
+    value={panelSupplyPanelId}
+    onChange={(e) => setPanelSupplyPanelId(e.target.value)}
+    disabled={!canAddPanel}
+  >
+    <option value="">Supply Panel</option>
+
+    {panels
+      .filter((panel) => panel.id !== editingPanelId)
+      .filter((panel) => panel.panelType !== "Packaged Panel")
+      .map((panel) => (
+        <option key={panel.id} value={panel.id}>
+          {panel.name}
+        </option>
+      ))}
+  </select>
+)}
 
     <button
       onClick={handleAddPanel}
@@ -2269,19 +2850,7 @@ const renderLoadDetailsCard = (load: Load) => {
                 disabled={!canAddLoad}
               />
 
-              <textarea
-                style={{
-                ...fieldStyle,
-                gridColumn: "span 2",
-                minHeight: 70,
-                resize: "vertical",
-                fontFamily: "inherit",
-              }}
-                placeholder="Load Note / Internal Comment"
-                value={loadNote}
-                onChange={(e) => setLoadNote(e.target.value)}
-                disabled={!canAddLoad}
-              />
+              
 
               <select
               style={fieldStyle}
@@ -2312,6 +2881,20 @@ const renderLoadDetailsCard = (load: Load) => {
                 placeholder="Quantity"
                 value={loadQuantity}
                 onChange={(e) => setLoadQuantity(e.target.value)}
+                disabled={!canAddLoad}
+              />
+
+              <textarea
+                style={{
+                ...fieldStyle,
+                gridColumn: "span 2",
+                minHeight: 70,
+                resize: "vertical",
+                fontFamily: "inherit",
+              }}
+                placeholder="Load Note / Internal Comment"
+                value={loadNote}
+                onChange={(e) => setLoadNote(e.target.value)}
                 disabled={!canAddLoad}
               />
 
@@ -2367,6 +2950,9 @@ const renderLoadDetailsCard = (load: Load) => {
     {renderTree(null)}
   </div>
 </div>
+
+{selectedPanelDetail &&
+  renderPanelDetailModal(selectedPanelDetail)}
 
 {welcomeOpen && (
   <>
@@ -2839,23 +3425,18 @@ const renderLoadDetailsCard = (load: Load) => {
         lineHeight: 1.8,
       }}
     >
-      <h3 style={{ marginTop: 0 }}>Load Detail</h3>
+      <h3
+  style={{
+    marginTop: 0,
+    color: "#0ea5e9",
+  }}
+>
+  Load Detail
+</h3>
 
       <div><strong>Project Code:</strong> {selectedLoadDetail.projectCode}</div>
       <div><strong>Description:</strong> {selectedLoadDetail.description}</div>
-      <div><strong>Load Type:</strong> {selectedLoadDetail.loadType}</div>
-      <div><strong>Manual Type:</strong> {selectedLoadDetail.manualLoadType || "-"}</div>
-      <div><strong>Brand:</strong> {selectedLoadDetail.brand || "-"}</div>
-      <div><strong>Series:</strong> {selectedLoadDetail.series || "-"}</div>
-      <div><strong>Model:</strong> {selectedLoadDetail.model || "-"}</div>
-      <div><strong>Power:</strong> {selectedLoadDetail.powerKw} kW</div>
-      <div><strong>Quantity:</strong> {selectedLoadDetail.quantity}</div>
-      <div><strong>Total Power:</strong> {(selectedLoadDetail.powerKw * selectedLoadDetail.quantity).toFixed(2)} kW</div>
-      <div><strong>Phase:</strong> {selectedLoadDetail.phaseType}</div>
-      <div><strong>Line:</strong> {selectedLoadDetail.phaseLine || "-"}</div>
-      <div><strong>Character:</strong> {selectedLoadDetail.loadCharacter || "-"}</div>
-      <div><strong>Cos φ:</strong> {selectedLoadDetail.cosPhi ?? "-"}</div>
-      <div><strong>Distance:</strong> {selectedLoadDetail.cableLengthM ?? "-"} m</div>
+
       <div>
   <strong>Location:</strong>{" "}
   {(() => {
@@ -2876,6 +3457,21 @@ const renderLoadDetailsCard = (load: Load) => {
       .join(" / ");
   })()}
 </div>
+
+      <div><strong>Load Type:</strong> {selectedLoadDetail.loadType}</div>
+      <div><strong>Manual Type:</strong> {selectedLoadDetail.manualLoadType || "-"}</div>
+      <div><strong>Brand:</strong> {selectedLoadDetail.brand || "-"}</div>
+      <div><strong>Series:</strong> {selectedLoadDetail.series || "-"}</div>
+      <div><strong>Model:</strong> {selectedLoadDetail.model || "-"}</div>
+      <div><strong>Power:</strong> {selectedLoadDetail.powerKw} kW</div>
+      <div><strong>Quantity:</strong> {selectedLoadDetail.quantity}</div>
+      <div><strong>Total Power:</strong> {(selectedLoadDetail.powerKw * selectedLoadDetail.quantity).toFixed(2)} kW</div>
+      <div><strong>Phase:</strong> {selectedLoadDetail.phaseType}</div>
+      <div><strong>Line:</strong> {selectedLoadDetail.phaseLine || "-"}</div>
+      <div><strong>Character:</strong> {selectedLoadDetail.loadCharacter || "-"}</div>
+      <div><strong>Cos φ:</strong> {selectedLoadDetail.cosPhi ?? "-"}</div>
+      <div><strong>Distance:</strong> {selectedLoadDetail.cableLengthM ?? "-"} m</div>
+      
 
 <div>
   <strong>Note:</strong> {selectedLoadDetail.note || "-"}

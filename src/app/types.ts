@@ -4,7 +4,7 @@ export type LoadType = "Pump" | "Fan" | "AHU" | "Manual";
 export type PhaseType = "1P" | "3P";
 export type PhaseLine = "R" | "S" | "T";
 export type LoadCharacter = "Ohmic" | "Inductive" | "Capacitive";
-export type PanelType = "MCC" | "SMDB" | "DB" | "LP" | "UPS DB";
+export type PanelType =   | "MCC" | "SMDB"  | "DB"  | "LP"  | "UPS DB"  | "Packaged Panel";
 export type PanelPhaseType = "1P" | "3P";
 
 export type Panel = {
@@ -14,6 +14,9 @@ export type Panel = {
   phaseType: PanelPhaseType;
   structureId: number;
   description?: string;
+  environment?: "Indoor" | "Outdoor";
+  supplyPanelId?: number;
+  ipRating?: string;
   createdAt: number;
 };
 
