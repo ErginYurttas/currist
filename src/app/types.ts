@@ -7,6 +7,12 @@ export type LoadCharacter = "Ohmic" | "Inductive" | "Capacitive";
 export type PanelType =   | "MCC" | "SMDB"  | "DB"  | "LP"  | "UPS DB"  | "Packaged Panel";
 export type PanelPhaseType = "1P" | "3P";
 
+export type PanelAnalyzer = {
+  id: number;
+  name: string;
+  connectedLoadIds: number[];
+};
+
 export type Panel = {
   id: number;
   name: string;
@@ -18,6 +24,7 @@ export type Panel = {
   supplyPanelId?: number;
   ipRating?: string;
   createdAt: number;
+  analyzers?: PanelAnalyzer[];
 };
 
 export type ManualLoadType =
