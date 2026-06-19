@@ -3417,7 +3417,7 @@ const unassignedAnalyzerLoads = analyzerAssignableItems.filter(
   <div
     style={{
       display: "grid",
-      gridTemplateColumns: "1.5fr 1.2fr 1fr 1fr 1fr 1.2fr",
+      gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
       gap: 14,
       alignItems: "stretch",
     }}
@@ -3433,7 +3433,9 @@ const unassignedAnalyzerLoads = analyzerAssignableItems.filter(
         justifyContent: "center",
       }}
     >
-      <div style={{ fontSize: 50, fontWeight: 700 }}>⚡ Currist</div>
+      <div style={{ fontSize: "clamp(26px, 5vw, 50px)", fontWeight: 700 }}>
+  ⚡ Currist
+</div>
       <div style={{ fontSize: 13, opacity: 0.7 }}>
              Design. Calculate. Control.
       </div>
