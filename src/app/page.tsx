@@ -3404,11 +3404,9 @@ const unassignedAnalyzerLoads = analyzerAssignableItems.filter(
       {/* SUMMARY BAR */}
 <div
   style={{
-    position: "fixed",
+    position: "sticky",
     top: 0,
-    left: 0,
-    right: 0,
-    zIndex: 9999,
+    zIndex: 999,
     background: "#0f172a",
     padding: "12px 20px 14px 20px",
     borderBottom: "1px solid #1e293b",
