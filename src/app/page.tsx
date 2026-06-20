@@ -17,6 +17,7 @@ import {
   Panel,
   PanelAnalyzer,
   ManualLoadType,
+  CableType,
   Structure,
   CatalogItem,
   Load,
@@ -37,6 +38,14 @@ const manualLoadTypes: ManualLoadType[] = [
 ];
 
 const cosPhiOptions = ["0.75", "0.80", "0.85", "0.90", "0.95", "1.00"];
+
+const cableTypeOptions: CableType[] = [
+  "NYY",
+  "N2XH",
+  "NHXMH",
+  "Flexible",
+  "Other",
+];
 
 const countryOptions = [
   "Australia",
@@ -197,6 +206,8 @@ export default function Home() {
   const [loadCharacter, setLoadCharacter] = useState<"" | LoadCharacter>("");
   const [cosPhi, setCosPhi] = useState("");
   const [cableLengthM, setCableLengthM] = useState("");
+  const [cableType, setCableType] = useState<"" | CableType>("");
+  const [startingMethod, setStartingMethod] = useState("");
   const [panelName, setPanelName] = useState("");
   const [panelType, setPanelType] = useState<PanelType>("DB");
   const [panelPhaseType, setPanelPhaseType] = useState<PanelPhaseType>("3P");
@@ -204,6 +215,9 @@ export default function Home() {
   const [panelEnvironment, setPanelEnvironment] = useState<"Indoor" | "Outdoor">( "Indoor");
   const [panelIpRating, setPanelIpRating] = useState("IP31");
   const [panelSupplyPanelId, setPanelSupplyPanelId] = useState("");
+  const [panelSupplyPhaseLine, setPanelSupplyPhaseLine] = useState<"" | PhaseLine>("");
+  const [panelCableLengthM, setPanelCableLengthM] = useState("");
+  const [panelCableType, setPanelCableType] = useState<"" | CableType>("");
   const getAvailableIpRatings = () => {if (panelEnvironment === "Outdoor") {return ["IP54", "IP65", "IP66"];
   }
 
@@ -570,6 +584,16 @@ const isPackagedPanel = panelType === "Packaged Panel";
 const handleAddPanel = () => {
   if (!selectedNode) return;
   if (!panelName.trim()) return;
+  const parsedPanelCableLength =
+  panelCableLengthM.trim() === "" ? undefined : Number(panelCableLengthM);
+
+if (
+  parsedPanelCableLength !== undefined &&
+  (Number.isNaN(parsedPanelCableLength) || parsedPanelCableLength < 0)
+) {
+  window.alert("Panel cable length must be a valid positive number.");
+  return;
+}
   if (editingPanelId !== null) {
   setPanels((prev) =>
     prev.map((panel) =>
@@ -585,6 +609,12 @@ const handleAddPanel = () => {
             ipRating: isPackagedPanel ? undefined : panelIpRating,
             supplyPanelId:
             panelSupplyPanelId.trim() === "" ? undefined : Number(panelSupplyPanelId),
+            supplyPhaseLine:
+            isPackagedPanel && panelPhaseType === "1P" && panelSupplyPhaseLine
+            ? panelSupplyPhaseLine
+            : undefined,
+            cableLengthM: isPackagedPanel ? parsedPanelCableLength : undefined,
+            cableType: isPackagedPanel ? panelCableType || undefined : undefined,
           }
         : panel
     )
@@ -598,6 +628,9 @@ const handleAddPanel = () => {
   setPanelDescription("");
   setPanelEnvironment("Indoor");
   setPanelSupplyPanelId("");
+  setPanelSupplyPhaseLine("");
+  setPanelCableLengthM("");
+  setPanelCableType("");
   setPanelIpRating("IP31");
 
   return;
@@ -606,18 +639,24 @@ const handleAddPanel = () => {
   const now = Date.now();
 
   const newPanel: Panel = {
-    id: now,
-    name: panelName.trim(),
-    panelType,
-    phaseType: panelPhaseType,
-    structureId: selectedNode.id,
-    description: panelDescription.trim() || undefined,
-    environment: isPackagedPanel ? undefined : panelEnvironment,
-    ipRating: isPackagedPanel ? undefined : panelIpRating,
-    supplyPanelId:
+  id: now,
+  name: panelName.trim(),
+  panelType,
+  phaseType: panelPhaseType,
+  structureId: selectedNode.id,
+  description: panelDescription.trim() || undefined,
+  environment: isPackagedPanel ? undefined : panelEnvironment,
+  ipRating: isPackagedPanel ? undefined : panelIpRating,
+  supplyPanelId:
     panelSupplyPanelId.trim() === "" ? undefined : Number(panelSupplyPanelId),
-    createdAt: now,
-  };
+  supplyPhaseLine:
+    isPackagedPanel && panelPhaseType === "1P" && panelSupplyPhaseLine
+      ? panelSupplyPhaseLine
+      : undefined,
+  cableLengthM: isPackagedPanel ? parsedPanelCableLength : undefined,
+  cableType: isPackagedPanel ? panelCableType || undefined : undefined,
+  createdAt: now,
+};
 
 
 
@@ -629,6 +668,9 @@ const handleAddPanel = () => {
   setPanelDescription("");
   setPanelEnvironment("Indoor");
   setPanelSupplyPanelId("");
+  setPanelSupplyPhaseLine("");
+  setPanelCableLengthM("");
+  setPanelCableType("");
   setPanelIpRating("IP31");
 };
 
@@ -678,6 +720,20 @@ const handleDeletePanel = (panelId: number) => {
   if (isManualLoad && !phaseType) return;
   if (phaseType !== "1P" && phaseType !== "3P") return;
   if (phaseType === "1P" && !phaseLine) return;
+
+  const selectedConnectedPanel =
+  connectedPanelId.trim() === ""
+    ? undefined
+    : panels.find((panel) => panel.id === Number(connectedPanelId));
+
+if (
+  selectedConnectedPanel?.panelType === "Packaged Panel" &&
+  selectedConnectedPanel.phaseType === "1P" &&
+  phaseType === "3P"
+) {
+  window.alert("3P load cannot be connected to a 1P packaged panel.");
+  return;
+}
 
     const normalizedProjectCode = projectCode.trim().toLowerCase();
     const projectCodeExists = loads.some(
@@ -743,6 +799,8 @@ const handleDeletePanel = (panelId: number) => {
             loadCharacter: loadCharacter || undefined,
             cosPhi: parsedCosPhi,
             cableLengthM: parsedCableLength,
+            cableType: cableType || undefined,
+            startingMethod: startingMethod || undefined,
             updatedAt: Date.now(),
           }
         : load
@@ -797,6 +855,8 @@ const handleDeletePanel = (panelId: number) => {
       loadCharacter: loadCharacter || undefined,
       cosPhi: parsedCosPhi,
       cableLengthM: parsedCableLength,
+      cableType: cableType || undefined,
+      startingMethod: startingMethod || undefined,
       
     };
 
@@ -884,6 +944,8 @@ const handleStartEditLoad = (load: Load) => {
   setCableLengthM(
     load.cableLengthM !== undefined ? String(load.cableLengthM) : ""
   );
+  setCableType(load.cableType || "");
+  setStartingMethod(load.startingMethod || "");
   setConnectedPanelId(
     load.connectedPanelId !== undefined ? String(load.connectedPanelId) : ""
   );
@@ -906,8 +968,10 @@ const handleCopyLoad = (load: Load) => {
   setLoadCharacter(load.loadCharacter || "");
   setCosPhi(load.cosPhi !== undefined ? String(load.cosPhi) : "");
   setCableLengthM(
-    load.cableLengthM !== undefined ? String(load.cableLengthM) : ""
-  );
+  load.cableLengthM !== undefined ? String(load.cableLengthM) : ""
+);
+setCableType(load.cableType || "");
+setStartingMethod(load.startingMethod || "");
   setConnectedPanelId(
     load.connectedPanelId !== undefined ? String(load.connectedPanelId) : ""
   );
@@ -1071,11 +1135,41 @@ const getPanelsByNode = (nodeId: number) => {
     T: 0,
   };
 
-  onePhaseLoads.forEach((load) => {
-    if (load.phaseLine) {
-      phaseLoadsKw[load.phaseLine] += load.powerKw * load.quantity;
+  loads.forEach((load) => {
+  const connectedPanel = panels.find(
+    (panel) => panel.id === load.connectedPanelId
+  );
+
+  const p = load.powerKw * load.quantity;
+
+  if (connectedPanel?.panelType === "Packaged Panel") {
+    if (connectedPanel.phaseType === "3P") {
+      phaseLoadsKw.R += p / 3;
+      phaseLoadsKw.S += p / 3;
+      phaseLoadsKw.T += p / 3;
+      return;
     }
-  });
+
+    if (
+      connectedPanel.phaseType === "1P" &&
+      connectedPanel.supplyPhaseLine
+    ) {
+      phaseLoadsKw[connectedPanel.supplyPhaseLine] += p;
+      return;
+    }
+  }
+
+  if (load.phaseType === "1P" && load.phaseLine) {
+    phaseLoadsKw[load.phaseLine] += p;
+    return;
+  }
+
+  if (load.phaseType === "3P") {
+    phaseLoadsKw.R += p / 3;
+    phaseLoadsKw.S += p / 3;
+    phaseLoadsKw.T += p / 3;
+  }
+});
 
   const totalSinglePhasePowerKw =
     phaseLoadsKw.R + phaseLoadsKw.S + phaseLoadsKw.T;
@@ -1143,7 +1237,7 @@ const getPanelsByNode = (nodeId: number) => {
     totalS,
     averageCosPhi,
   };
-}, [loads]);
+}, [loads, panels]);
 
 
 const panelSummaries = useMemo(() => {
@@ -1295,6 +1389,38 @@ const getCurrent = (load: Load) => {
 
   return totalPowerW / (1.732 * 400 * cosValue);
 };
+
+const getCalculatedCableSection = (
+  currentA: number,
+  lengthM: number,
+  phaseType: PhaseType
+) => {
+  const sections = [
+    1.5, 2.5, 4, 6, 10, 16,
+    25, 35, 50, 70, 95,
+    120, 150, 185, 240,
+  ];
+
+  const voltage = phaseType === "1P" ? 230 : 400;
+  const maxVoltageDropPercent = 3;
+  const copperResistivity = 0.0175;
+
+  for (const section of sections) {
+    const voltageDrop =
+      phaseType === "1P"
+        ? (2 * currentA * lengthM * copperResistivity) / section
+        : (1.732 * currentA * lengthM * copperResistivity) / section;
+
+    const voltageDropPercent = (voltageDrop / voltage) * 100;
+
+    if (voltageDropPercent <= maxVoltageDropPercent) {
+      return section;
+    }
+  }
+
+  return 240;
+};
+
 
 const getEquipmentType = (load: Load) => {
   if (
@@ -1688,8 +1814,12 @@ worksheet.getCell("H25").value = powerFactorType;
     fgColor: { argb: lightBg },
   };
 
+  const cableSummaryMap: Record<string, number> = {};
+
+  
+
   worksheet.mergeCells("A28:H28");
-worksheet.getCell("A28").value = "LOAD LIST";
+  worksheet.getCell("A28").value = "LOAD LIST";
   worksheet.getCell("A28").font = {
     bold: true,
     size: 14,
@@ -1779,7 +1909,89 @@ const getLoadLocationForExport = (load: Load) => {
   };
 };
 
-const tableHeaderRow = 30;
+panelLoads.forEach((load) => {
+  if (!load.cableLengthM || !load.cableType) return;
+
+  const section = getCalculatedCableSection(
+    getCurrent(load),
+    load.cableLengthM,
+    load.phaseType
+  );
+
+  const cableName = `${load.cableType} ${
+    load.phaseType === "1P" ? "3x" : "5x"
+  }${section}`;
+
+  cableSummaryMap[cableName] =
+    (cableSummaryMap[cableName] || 0) + load.cableLengthM;
+});
+
+childPackagedPanels.forEach((packPanel) => {
+  if (!packPanel.cableLengthM || !packPanel.cableType) return;
+
+  const packLoads = loads.filter(
+    (load) => load.connectedPanelId === packPanel.id
+  );
+
+  const packCurrent = packLoads.reduce(
+    (sum, load) => sum + getCurrent(load),
+    0
+  );
+
+  const section = getCalculatedCableSection(
+    packCurrent,
+    packPanel.cableLengthM,
+    packPanel.phaseType
+  );
+
+  const cableName = `${packPanel.cableType} ${
+    packPanel.phaseType === "1P" ? "3x" : "5x"
+  }${section}`;
+
+  cableSummaryMap[cableName] =
+    (cableSummaryMap[cableName] || 0) + packPanel.cableLengthM;
+});
+
+let cableSummaryRow = 27;
+
+worksheet.mergeCells(`A${cableSummaryRow}:H${cableSummaryRow}`);
+worksheet.getCell(`A${cableSummaryRow}`).value =
+  "Cable Summary (Calculated by 3% Voltage Drop)";
+worksheet.getCell(`A${cableSummaryRow}`).font = {
+  bold: true,
+  size: 13,
+  color: { argb: white },
+};
+worksheet.getCell(`A${cableSummaryRow}`).alignment = {
+  horizontal: "center",
+  vertical: "middle",
+};
+worksheet.getCell(`A${cableSummaryRow}`).fill = {
+  type: "pattern",
+  pattern: "solid",
+  fgColor: { argb: slate },
+};
+
+cableSummaryRow += 2;
+
+Object.entries(cableSummaryMap).forEach(([cableName, length]) => {
+  worksheet.getCell(`A${cableSummaryRow}`).value = cableName;
+  worksheet.getCell(`B${cableSummaryRow}`).value = `${formatNumber(length, 0)} m`;
+
+  worksheet.getCell(`A${cableSummaryRow}`).font = {
+    bold: true,
+    color: { argb: darkBlue },
+  };
+
+  worksheet.getCell(`B${cableSummaryRow}`).font = {
+    bold: true,
+    color: { argb: darkBlue },
+  };
+
+  cableSummaryRow += 1;
+});
+
+const tableHeaderRow = Math.max(30, cableSummaryRow + 1);
 
 const tableHeaders = [
   "Line No",
@@ -1803,6 +2015,7 @@ const tableHeaders = [
   "Room No",
   "Room Name",
   "Cable Length (m)",
+  "Cable Type",
   "Created",
   "Revised",
   "Note",
@@ -1856,7 +2069,7 @@ exportItems.forEach((item) => {
       load.loadCharacter || "",
       load.cosPhi ?? "",
       load.phaseLine || "",
-      "-",
+      load.startingMethod || "-",
       getAnalyzerNameForExportLoad(load),
       connectedPanel?.name || panel.name,
       getEquipmentType(load),
@@ -1868,6 +2081,7 @@ exportItems.forEach((item) => {
       location.roomNo,
       location.roomName,
       load.cableLengthM ?? "",
+      load.cableType || "",
       new Date(load.createdAt).toLocaleString("tr-TR", {
         timeZone: "Europe/Istanbul",
       }),
@@ -1917,7 +2131,7 @@ exportItems.forEach((item) => {
       load.loadCharacter || "",
       load.cosPhi ?? "",
       load.phaseLine || "",
-      "-",
+      load.startingMethod || "-",
       getAnalyzerNameForExportLoad(load),
       item.panel.name,
       getEquipmentType(load),
@@ -1928,7 +2142,8 @@ exportItems.forEach((item) => {
       location.floor,
       location.roomNo,
       location.roomName,
-      load.cableLengthM ?? "",
+      item.panel.cableLengthM ?? "",
+      item.panel.cableType || "",
       new Date(load.createdAt).toLocaleString("tr-TR", {
         timeZone: "Europe/Istanbul",
       }),
@@ -1949,11 +2164,14 @@ exportItems.forEach((item) => {
   mergeCellsIfNeeded(startRow, endRow, 5, "left"); // Power (kW)
   mergeCellsIfNeeded(startRow, endRow, 6, "left"); // Current (A)
   mergeCellsIfNeeded(startRow, endRow, 12, "left"); // Connected Panel
+  mergeCellsIfNeeded(startRow, endRow, 9, "left"); // Line
+  mergeCellsIfNeeded(startRow, endRow, 11, "left"); // Analyzer
   mergeCellsIfNeeded(startRow, endRow, 17, "left"); // Block
   mergeCellsIfNeeded(startRow, endRow, 18, "left"); // Floor
   mergeCellsIfNeeded(startRow, endRow, 19, "left"); // Room No
   mergeCellsIfNeeded(startRow, endRow, 20, "left"); // Room Name
   mergeCellsIfNeeded(startRow, endRow, 21, "left"); // Cable Length (m)
+  mergeCellsIfNeeded(startRow, endRow, 22, "left"); // Cable Type
 
   lineCounter += 1;
 });
@@ -1973,9 +2191,10 @@ worksheet.getColumn(15).width = 22; // Series
 worksheet.getColumn(16).width = 28; // Model
 
 worksheet.getColumn(20).width = 20; // Room Name
-worksheet.getColumn(22).width = 24; // Created
-worksheet.getColumn(23).width = 24; // Revised
-worksheet.getColumn(24).width = 30; // Note
+worksheet.getColumn(22).width = 18; // Cable Type
+worksheet.getColumn(23).width = 24; // Created
+worksheet.getColumn(24).width = 24; // Revised
+worksheet.getColumn(25).width = 30; // Note
 for (let rowNumber = tableHeaderRow + 1; rowNumber < currentExcelRow; rowNumber++) {
   worksheet.getRow(rowNumber).eachCell((cell) => {
     cell.alignment = {
@@ -2101,6 +2320,7 @@ const isPanelExpanded = expandedPanels[panel.id] ?? true;
     Loads: {panelSummary?.loadCount ?? 0}
   </span>
 
+  {panel.panelType !== "Packaged Panel" && (
   <span>
     R:{formatNumber(panelSummary?.panelR ?? 0)}
     {" | "}
@@ -2108,6 +2328,31 @@ const isPanelExpanded = expandedPanels[panel.id] ?? true;
     {" | "}
     T:{formatNumber(panelSummary?.panelT ?? 0)}
   </span>
+)}
+
+{panel.panelType === "Packaged Panel" && panel.phaseType === "1P" && (
+  <span>
+    Supply Phase: {panel.supplyPhaseLine || "-"}
+  </span>
+)}
+
+{panel.panelType === "Packaged Panel" && (
+  <>
+    <span>
+      Supply Panel:{" "}
+      {panels.find((p) => p.id === panel.supplyPanelId)?.name || "-"}
+    </span>
+
+    <span>
+      Supply Distance: {panel.cableLengthM ?? "-"} m
+    </span>
+
+    <span>
+      Panel Cable Type: {panel.cableType || "-"}
+    </span>
+  </>
+)}
+
 </div>
 
       {isPanelExpanded &&
@@ -2216,6 +2461,18 @@ const isPanelExpanded = expandedPanels[panel.id] ?? true;
           ? String(childPanel.supplyPanelId)
           : ""
       );
+
+      setPanelSupplyPhaseLine(
+      childPanel.supplyPhaseLine || ""
+      );
+
+      setPanelCableLengthM(
+  childPanel.cableLengthM !== undefined ? String(childPanel.cableLengthM) : ""
+);
+
+setPanelCableType(
+  childPanel.cableType || ""
+);
 
       setSelectedParent(childPanel.structureId);
     }}
@@ -2353,6 +2610,7 @@ const isPanelExpanded = expandedPanels[panel.id] ?? true;
       </button>
     </div>
   ) : (
+  panel.panelType !== "Packaged Panel" && (
     <button
       onClick={() => setSelectedAnalyzerPanelId(panel.id)}
       style={{
@@ -2364,7 +2622,8 @@ const isPanelExpanded = expandedPanels[panel.id] ?? true;
     >
       Add Analyzer
     </button>
-  )}
+  )
+)}
 </div>
 
       <div
@@ -2378,23 +2637,24 @@ const isPanelExpanded = expandedPanels[panel.id] ?? true;
         >
 
 
-
-<button
-  onClick={(e) => {
-    e.stopPropagation();
-    handleExportPanelToExcel(panel);
-  }}
-  style={{
-    ...buttonStyle,
-    minWidth: 70,
-    minHeight: 32,
-    background: "#f59e0b",
-    color: "#0f172a",
-    cursor: "pointer",
-  }}
->
-  Export
-</button>
+{panel.panelType !== "Packaged Panel" && (
+  <button
+    onClick={(e) => {
+      e.stopPropagation();
+      handleExportPanelToExcel(panel);
+    }}
+    style={{
+      ...buttonStyle,
+      minWidth: 70,
+      minHeight: 32,
+      background: "#f59e0b",
+      color: "#0f172a",
+      cursor: "pointer",
+    }}
+  >
+    Export
+  </button>
+)}
 
 
 <button
@@ -2474,10 +2734,22 @@ const isPanelExpanded = expandedPanels[panel.id] ?? true;
     setPanelEnvironment(panel.environment || "Indoor");
     setPanelIpRating(panel.ipRating || "IP31");
     setPanelSupplyPanelId(
-    panel.supplyPanelId !== undefined ? String(panel.supplyPanelId) : ""
-    );
+  panel.supplyPanelId !== undefined ? String(panel.supplyPanelId) : ""
+);
 
-    setSelectedParent(panel.structureId);
+setPanelSupplyPhaseLine(
+  panel.supplyPhaseLine || ""
+);
+
+setPanelCableLengthM(
+  panel.cableLengthM !== undefined ? String(panel.cableLengthM) : ""
+);
+
+setPanelCableType(
+  panel.cableType || ""
+);
+
+setSelectedParent(panel.structureId);
   }}
   style={{
     ...buttonStyle,
@@ -3744,6 +4016,22 @@ const unassignedAnalyzerLoads = analyzerAssignableItems.filter(
       <option value="3P">3 Phase</option>
     </select>
 
+    {isPackagedPanel && panelPhaseType === "1P" && (
+  <select
+    style={fieldStyle}
+    value={panelSupplyPhaseLine}
+    onChange={(e) =>
+      setPanelSupplyPhaseLine(e.target.value as PhaseLine)
+    }
+    disabled={!canAddPanel}
+  >
+    <option value="">Supply Phase</option>
+    <option value="R">R Phase</option>
+    <option value="S">S Phase</option>
+    <option value="T">T Phase</option>
+  </select>
+)}
+
     <input
       style={fieldStyle}
       placeholder="Panel Description"
@@ -3778,23 +4066,51 @@ const unassignedAnalyzerLoads = analyzerAssignableItems.filter(
 </select>
 
 {isPackagedPanel && (
-  <select
-    style={fieldStyle}
-    value={panelSupplyPanelId}
-    onChange={(e) => setPanelSupplyPanelId(e.target.value)}
-    disabled={!canAddPanel}
-  >
-    <option value="">Supply Panel</option>
+  <>
+    <select
+      style={fieldStyle}
+      value={panelSupplyPanelId}
+      onChange={(e) => setPanelSupplyPanelId(e.target.value)}
+      disabled={!canAddPanel}
+    >
+      <option value="">Supply Panel</option>
 
-    {panels
-      .filter((panel) => panel.id !== editingPanelId)
-      .filter((panel) => panel.panelType !== "Packaged Panel")
-      .map((panel) => (
-        <option key={panel.id} value={panel.id}>
-          {panel.name}
+      {panels
+        .filter((panel) => panel.id !== editingPanelId)
+        .filter((panel) => panel.panelType !== "Packaged Panel")
+        .map((panel) => (
+          <option key={panel.id} value={panel.id}>
+            {panel.name}
+          </option>
+        ))}
+    </select>
+
+    <input
+      style={fieldStyle}
+      type="number"
+      step="0.1"
+      min="0"
+      placeholder="Distance to Supply Panel (m)"
+      value={panelCableLengthM}
+      onChange={(e) => setPanelCableLengthM(e.target.value)}
+      disabled={!canAddPanel}
+    />
+
+    <select
+      style={fieldStyle}
+      value={panelCableType}
+      onChange={(e) => setPanelCableType(e.target.value as CableType)}
+      disabled={!canAddPanel}
+    >
+      <option value="">Panel Cable Type</option>
+
+      {cableTypeOptions.map((item) => (
+        <option key={item} value={item}>
+          {item}
         </option>
       ))}
-  </select>
+    </select>
+  </>
 )}
 
     <button
@@ -3956,6 +4272,21 @@ const unassignedAnalyzerLoads = analyzerAssignableItems.filter(
                 ))}
               </select>
 
+              <select
+                style={fieldStyle}
+                value={startingMethod}
+                onChange={(e) => setStartingMethod(e.target.value)}
+                disabled={!canAddLoad}
+                >
+                <option value="">Starting Method</option>
+                <option value="DOL">DOL</option>
+                <option value="Star-Delta">Star-Delta</option>
+                <option value="VFD">VFD</option>
+                <option value="Soft Starter">Soft Starter</option>
+                <option value="Direct Connection">Direct Connection</option>
+                <option value="Other">Other</option>
+              </select>
+
               <input
                 style={fieldStyle}
                 type="number"
@@ -3966,6 +4297,21 @@ const unassignedAnalyzerLoads = analyzerAssignableItems.filter(
                 onChange={(e) => setCableLengthM(e.target.value)}
                 disabled={!canAddLoad}
               />
+
+              <select
+                style={fieldStyle}
+                value={cableType}
+                onChange={(e) => setCableType(e.target.value as CableType)}
+                disabled={!canAddLoad}
+                >
+                <option value="">Cable Type</option>
+
+                {cableTypeOptions.map((item) => (
+                <option key={item} value={item}>
+                {item}
+                </option>
+                ))}
+              </select>
 
               <input
                 style={fieldStyle}
@@ -4152,7 +4498,9 @@ const unassignedAnalyzerLoads = analyzerAssignableItems.filter(
 <div>- 1P / 3P Load Definition</div>
 <div>- R / S / T Line Selection</div>
 <div>- Load Character And Cos φ Selection</div>
+<div>- Starting Method Definition</div>
 <div>- Cable Length Entry</div>
+<div>- Cable Type Definition</div>
 <div>- Load Note / Internal Comment</div>
 <div>- Connected Panel Assignment</div>
 <div>- Unassigned Load Management</div>
@@ -4165,6 +4513,8 @@ const unassignedAnalyzerLoads = analyzerAssignableItems.filter(
 <div>- Panel Detail Popup</div>
 <div>- Panel Environment And IP Rating</div>
 <div>- Packaged Panel Logic</div>
+<div>- Packaged Panel Feeders</div>
+<div>- Packaged Panel Supply Cable Definition</div>
 <div>- Upstream Supply Panel Connection</div>
 <div>- Connected Panel Relationships</div>
 
@@ -4181,6 +4531,7 @@ const unassignedAnalyzerLoads = analyzerAssignableItems.filter(
 <div>- Balance Status (Excellent / Good / Attention / Critical)</div>
 <div>- Power Factor Summary</div>
 <div>- Phase Angle (φ) Calculation</div>
+<div>- Power Factor Type Classification (Inductive / Capacitive / Ohmic)</div>
 
 <br />
 
@@ -4206,21 +4557,30 @@ const unassignedAnalyzerLoads = analyzerAssignableItems.filter(
 <div>- Analyzer Information Export</div>
 <div>- Connected Panel Export</div>
 <div>- Starting Method Column</div>
+<div>- Cable Length Export</div>
+<div>- Cable Type Export</div>
+<div>- Load Notes Export</div>
 <div>- Packaged Panel Grouping</div>
 <div>- Multi-Row Packaged Panel Export</div>
+<div>- Analyzer Cell Merge</div>
+<div>- Packaged Panel Feeder Merge Logic</div>
 <div>- Merged Feeder Information For Packaged Panels</div>
 <div>- Engineering Load Schedule</div>
 <div>- Created Date Export</div>
 <div>- Revised Date Export</div>
+<div>- Cable Summary Report</div>
+<div>- Automatic Cable Section Calculation</div>
+<div>- Voltage Drop Based Cable Sizing</div>
 
 <hr style={{ margin: "16px 0", borderColor: "#334155" }} />
 
 <h3>🔨 CURRENT DEVELOPMENT</h3>
 
-<div><strong>Load Engineering</strong></div>
-<div>- Starting Method Definition (DOL / VFD / Star-Delta / Soft Starter)</div>
-<div>- Cable Type Definition</div>
-<div>- Load Engineering Metadata</div>
+<div><strong>Export Professionalization</strong></div>
+<div>- Cable Summary Positioning</div>
+<div>- Export Layout Improvements</div>
+<div>- Engineering Report Formatting</div>
+<div>- Cable Sizing Validation</div>
 
 <br />
 
@@ -4241,6 +4601,15 @@ const unassignedAnalyzerLoads = analyzerAssignableItems.filter(
 
 <h3>🎯 ROADMAP</h3>
 
+<div><strong>Import / Export</strong></div>
+<div>- Excel Import</div>
+<div>- Project Reconstruction From Export</div>
+<div>- Full Project Excel Export</div>
+<div>- PDF Export</div>
+<div>- .currist Project File Format</div>
+
+<br />
+
 <div><strong>Electrical Engineering</strong></div>
 <div>- Diversity / Demand / Coincidence Factors</div>
 <div>- Mutually Exclusive Loads</div>
@@ -4253,9 +4622,10 @@ const unassignedAnalyzerLoads = analyzerAssignableItems.filter(
 
 <div><strong>Cable Engineering</strong></div>
 <div>- Cable Type Library</div>
-<div>- Cable Sizing</div>
-<div>- Voltage Drop Calculation</div>
-<div>- Cable Summary Report</div>
+<div>- Cable Sizing Validation</div>
+<div>- Advanced Voltage Drop Parameters</div>
+<div>- Cable Schedule Report</div>
+<div>- Cable Library Expansion</div>
 
 <br />
 
@@ -4278,15 +4648,6 @@ const unassignedAnalyzerLoads = analyzerAssignableItems.filter(
 <div>- Panel Technical Specification</div>
 <div>- Bill Of Materials (BOM)</div>
 <div>- Supplier Ready Documentation</div>
-
-<br />
-
-<div><strong>Import / Export</strong></div>
-<div>- Full Project Excel Export</div>
-<div>- Excel Import</div>
-<div>- Project Reconstruction From Export</div>
-<div>- PDF Export</div>
-<div>- .currist Project File Format</div>
 
 <br />
 
@@ -4314,12 +4675,12 @@ const unassignedAnalyzerLoads = analyzerAssignableItems.filter(
 
 <h3>📦 VERSION INFORMATION</h3>
 
-<div>Version: 0.7.0</div>
+<div>Version: 0.7.1</div>
 <div>Developed By: Ergin Yurttaş</div>
 <div>Contact: erginyurttas@gmail.com</div>
 
 <div style={{ marginTop: 12 }}>
-  <strong>Last Update:</strong> June 19, 2026
+  <strong>Last Update:</strong> June 20, 2026
 </div>
 
 </div>
@@ -4515,6 +4876,7 @@ const unassignedAnalyzerLoads = analyzerAssignableItems.filter(
       <div><strong>Character:</strong> {selectedLoadDetail.loadCharacter || "-"}</div>
       <div><strong>Cos φ:</strong> {selectedLoadDetail.cosPhi ?? "-"}</div>
       <div><strong>Distance:</strong> {selectedLoadDetail.cableLengthM ?? "-"} m</div>
+      <div><strong>Cable Type:</strong> {selectedLoadDetail.cableType || "-"}</div>
       
 
 <div>

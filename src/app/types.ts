@@ -22,10 +22,20 @@ export type Panel = {
   description?: string;
   environment?: "Indoor" | "Outdoor";
   supplyPanelId?: number;
-  ipRating?: string;
+ ipRating?: string;
+  supplyPhaseLine?: PhaseLine;
+  cableLengthM?: number;
+  cableType?: CableType;
   createdAt: number;
   analyzers?: PanelAnalyzer[];
 };
+
+export type CableType =
+  | "NYY"
+  | "N2XH"
+  | "NHXMH"
+  | "Flexible"
+  | "Other";
 
 export type ManualLoadType =
   | "Socket Outlet"
@@ -74,5 +84,7 @@ export type Load = {
   loadCharacter?: LoadCharacter;
   cosPhi?: number;
   cableLengthM?: number;
+  startingMethod?: string;
   note?: string;
+  cableType?: CableType;
 };
