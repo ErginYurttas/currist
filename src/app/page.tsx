@@ -1814,29 +1814,7 @@ worksheet.getCell("H25").value = powerFactorType;
     fgColor: { argb: lightBg },
   };
 
-  const cableSummaryMap: Record<string, number> = {};
-
-  
-
-  worksheet.mergeCells("A28:H28");
-  worksheet.getCell("A28").value = "LOAD LIST";
-  worksheet.getCell("A28").font = {
-    bold: true,
-    size: 14,
-    color: { argb: white },
-  };
-  worksheet.getCell("A28").alignment = {
-    horizontal: "center",
-    vertical: "middle",
-  };
-  worksheet.getCell("A28").fill = {
-    type: "pattern",
-    pattern: "solid",
-    fgColor: { argb: darkBlue },
-  };
-  worksheet.getRow(28).height = 24;
-
-  const panelLoads = loads.filter(
+const panelLoads = loads.filter(
   (load) => load.connectedPanelId === panel.id
 );
 
@@ -1846,68 +1824,7 @@ const childPackagedPanels = panels.filter(
     item.supplyPanelId === panel.id
 );
 
-const packagedPanelLoads = childPackagedPanels.flatMap((childPanel) =>
-  loads.filter((load) => load.connectedPanelId === childPanel.id)
-);
-
-type ExportRowItem =
-  | {
-      rowType: "load";
-      load: Load;
-    }
-  | {
-      rowType: "packagedPanel";
-      panel: Panel;
-      loads: Load[];
-    };
-
-const exportItems: ExportRowItem[] = [
-  ...panelLoads.map((load) => ({
-    rowType: "load" as const,
-    load,
-  })),
-  ...childPackagedPanels.map((childPanel) => ({
-    rowType: "packagedPanel" as const,
-    panel: childPanel,
-    loads: loads.filter((load) => load.connectedPanelId === childPanel.id),
-  })),
-];
-
-const getAnalyzerNameForExportLoad = (load: Load) => {
-  const loadPanel = panels.find((p) => p.id === load.connectedPanelId);
-
-  const analyzer = (panel.analyzers || []).find((item) => {
-    if (item.connectedLoadIds.includes(load.id)) return true;
-
-    if (
-      loadPanel?.panelType === "Packaged Panel" &&
-      item.connectedLoadIds.includes(-loadPanel.id)
-    ) {
-      return true;
-    }
-
-    return false;
-  });
-
-  return analyzer ? analyzer.name : "Unassigned";
-};
-
-const getLoadLocationForExport = (load: Load) => {
-  const room = structures.find((s) => s.id === load.roomId);
-  const floor = structures.find((s) => s.id === room?.parentId);
-  const block = structures.find((s) => s.id === floor?.parentId);
-  const building = structures.find((s) => s.id === block?.parentId);
-
-  return {
-    building: building?.name || "",
-    block: block?.name || "",
-    floor: floor?.optionalName
-      ? `${floor.name} - ${floor.optionalName}`
-      : floor?.name || "",
-    roomNo: room?.name || "",
-    roomName: room?.optionalName || "",
-  };
-};
+const cableSummaryMap: Record<string, number> = {};
 
 panelLoads.forEach((load) => {
   if (!load.cableLengthM || !load.cableType) return;
@@ -1991,7 +1908,96 @@ Object.entries(cableSummaryMap).forEach(([cableName, length]) => {
   cableSummaryRow += 1;
 });
 
-const tableHeaderRow = Math.max(30, cableSummaryRow + 1);
+const loadListTitleRow = Math.max(28, cableSummaryRow + 1);
+
+worksheet.mergeCells(`A${loadListTitleRow}:H${loadListTitleRow}`);
+worksheet.getCell(`A${loadListTitleRow}`).value = "LOAD LIST";
+worksheet.getCell(`A${loadListTitleRow}`).font = {
+  bold: true,
+  size: 14,
+  color: { argb: white },
+};
+worksheet.getCell(`A${loadListTitleRow}`).alignment = {
+  horizontal: "center",
+  vertical: "middle",
+};
+worksheet.getCell(`A${loadListTitleRow}`).fill = {
+  type: "pattern",
+  pattern: "solid",
+  fgColor: { argb: darkBlue },
+};
+worksheet.getRow(loadListTitleRow).height = 24;
+
+const packagedPanelLoads = childPackagedPanels.flatMap((childPanel) =>
+  loads.filter((load) => load.connectedPanelId === childPanel.id)
+);
+
+type ExportRowItem =
+  | {
+      rowType: "load";
+      load: Load;
+    }
+  | {
+      rowType: "packagedPanel";
+      panel: Panel;
+      loads: Load[];
+    };
+
+const exportItems: ExportRowItem[] = [
+  ...panelLoads.map((load) => ({
+    rowType: "load" as const,
+    load,
+  })),
+  ...childPackagedPanels.map((childPanel) => ({
+    rowType: "packagedPanel" as const,
+    panel: childPanel,
+    loads: loads.filter((load) => load.connectedPanelId === childPanel.id),
+  })),
+];
+
+const getAnalyzerNameForExportLoad = (load: Load) => {
+  const loadPanel = panels.find((p) => p.id === load.connectedPanelId);
+
+  const analyzer = (panel.analyzers || []).find((item) => {
+    if (item.connectedLoadIds.includes(load.id)) return true;
+
+    if (
+      loadPanel?.panelType === "Packaged Panel" &&
+      item.connectedLoadIds.includes(-loadPanel.id)
+    ) {
+      return true;
+    }
+
+    return false;
+  });
+
+  return analyzer ? analyzer.name : "Unassigned";
+};
+
+const getLoadLocationForExport = (load: Load) => {
+  const room = structures.find((s) => s.id === load.roomId);
+  const floor = structures.find((s) => s.id === room?.parentId);
+  const block = structures.find((s) => s.id === floor?.parentId);
+  const building = structures.find((s) => s.id === block?.parentId);
+
+  return {
+    building: building?.name || "",
+    block: block?.name || "",
+    floor: floor?.optionalName
+      ? `${floor.name} - ${floor.optionalName}`
+      : floor?.name || "",
+    roomNo: room?.name || "",
+    roomName: room?.optionalName || "",
+  };
+};
+
+
+
+
+
+
+
+const tableHeaderRow = loadListTitleRow + 2;
 
 const tableHeaders = [
   "Line No",
