@@ -1213,6 +1213,8 @@ const getPanelsByNode = (nodeId: number) => {
     weightedCosDenominator += p;
   });
 
+  
+
   const averageCosPhi =
     weightedCosDenominator > 0
       ? weightedCosNumerator / weightedCosDenominator
@@ -1433,12 +1435,286 @@ const getEquipmentType = (load: Load) => {
   return load.loadType;
 };
 
+const readInternalTable = (
+  sheet: XLSX.WorkSheet,
+  markerName: string
+): Record<string, unknown>[] => {
+  const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, {
+    header: 1,
+    defval: "",
+  }) as unknown as unknown[][];
 
+  const markerRowIndex = rows.findIndex(
+    (row) => row[0] === markerName
+  );
 
+  if (markerRowIndex === -1) return [];
+
+  const headerRow = rows[markerRowIndex + 1] as string[];
+  const dataRows = rows.slice(markerRowIndex + 2);
+
+  const nextMarkerIndex = dataRows.findIndex(
+    (row) => typeof row[0] === "string" && row[0].startsWith("[")
+  );
+
+  const tableRows =
+    nextMarkerIndex === -1 ? dataRows : dataRows.slice(0, nextMarkerIndex);
+
+  return tableRows
+    .filter((row) => row.some((cell) => cell !== ""))
+    .map((row) => {
+      const item: Record<string, unknown> = {};
+
+      headerRow.forEach((header, index) => {
+        if (!header) return;
+        item[header] = row[index] ?? "";
+      });
+
+      return item;
+    });
+};
+
+const parseStructures = (
+  rows: Record<string, unknown>[]
+): Structure[] => {
+  return rows.map((row) => ({
+    id: Number(row.ID),
+    parentId:
+      row.ParentID === "" ? null : Number(row.ParentID),
+    type: row.Type as StructureType,
+    name: String(row.Name),
+    optionalName:
+      row.OptionalName === ""
+        ? undefined
+        : String(row.OptionalName),
+    createdAt: Date.now(),
+  }));
+};
+
+const parsePanels = (
+  rows: Record<string, unknown>[]
+): Panel[] => {
+  return rows.map((row) => ({
+    id: Number(row.ID),
+    structureId: Number(row.StructureID),
+    name: String(row.Name),
+    panelType: row.PanelType as PanelType,
+    phaseType: row.PhaseType as PanelPhaseType,
+    description: String(row.Description || ""),
+    environment:
+      row.Environment === ""
+        ? undefined
+        : (row.Environment as "Indoor" | "Outdoor"),
+    ipRating:
+      row.IpRating === ""
+        ? undefined
+        : String(row.IpRating),
+    supplyPanelId:
+      row.SupplyPanelID === ""
+        ? undefined
+        : Number(row.SupplyPanelID),
+    supplyPhaseLine:
+      row.SupplyPhaseLine === ""
+        ? undefined
+        : (row.SupplyPhaseLine as PhaseLine),
+    cableLengthM:
+      row.CableLengthM === ""
+        ? undefined
+        : Number(row.CableLengthM),
+    cableType:
+      row.CableType === ""
+        ? undefined
+        : (row.CableType as CableType),
+    createdAt: Number(row.CreatedAt),
+    analyzers: [],
+  }));
+};
+
+const parseLoads = (
+  rows: Record<string, unknown>[]
+): Load[] => {
+  return rows.map((row) => ({
+    id: Number(row.ID),
+    connectedPanelId:
+      row.ConnectedPanelID === ""
+        ? undefined
+        : Number(row.ConnectedPanelID),
+    roomId: Number(row.RoomID),
+    projectCode: String(row.ProjectCode),
+    description: String(row.Description),
+    loadType: row.LoadType as LoadType,
+    manualLoadType:
+      row.ManualLoadType === ""
+        ? undefined
+        : (row.ManualLoadType as ManualLoadType),
+    powerKw: Number(row.PowerKw),
+    quantity: Number(row.Quantity),
+    phaseType: row.PhaseType as PhaseType,
+    phaseLine:
+      row.PhaseLine === ""
+        ? undefined
+        : (row.PhaseLine as PhaseLine),
+    cosPhi:
+      row.CosPhi === ""
+        ? undefined
+        : Number(row.CosPhi),
+    loadCharacter:
+      row.LoadCharacter === ""
+        ? undefined
+        : (row.LoadCharacter as LoadCharacter),
+    startingMethod:
+      row.StartingMethod === ""
+        ? undefined
+        : String(row.StartingMethod),
+    cableLengthM:
+      row.CableLengthM === ""
+        ? undefined
+        : Number(row.CableLengthM),
+    cableType:
+      row.CableType === ""
+        ? undefined
+        : (row.CableType as CableType),
+    brand: String(row.Brand || ""),
+    series: String(row.Series || ""),
+    model: String(row.Model || ""),
+    note:
+      row.Note === ""
+        ? undefined
+        : String(row.Note),
+    createdAt: Number(row.CreatedAt),
+    updatedAt:
+      row.UpdatedAt === ""
+        ? undefined
+        : Number(row.UpdatedAt),
+  }));
+};
+
+const parseAnalyzers = (
+  rows: Record<string, unknown>[],
+  panels: Panel[]
+): Panel[] => {
+  const updatedPanels = [...panels];
+
+  rows.forEach((row) => {
+    const panelId = Number(row.PanelID);
+
+    const panel = updatedPanels.find((p) => p.id === panelId);
+
+    if (!panel) return;
+
+    if (!panel.analyzers) {
+      panel.analyzers = [];
+    }
+
+    panel.analyzers.push({
+      id: Number(row.AnalyzerID),
+      name: String(row.AnalyzerName),
+      connectedLoadIds: String(row.ConnectedLoadIDs)
+        .split(",")
+        .filter(Boolean)
+        .map(Number),
+    });
+  });
+
+  return updatedPanels;
+};
+
+const handleImportCurristExcel = async (
+  event: React.ChangeEvent<HTMLInputElement>
+) => {
+  const file = event.target.files?.[0];
+
+  if (!file) return;
+
+  const confirmed = window.confirm(
+  "Importing a project will replace the current project. Continue?"
+);
+
+if (!confirmed) {
+  event.target.value = "";
+  return;
+}
+
+  try {
+    const buffer = await file.arrayBuffer();
+
+    const workbook = XLSX.read(buffer, {
+      type: "array",
+    });
+
+    const internalSheet = workbook.Sheets["__currist_internal__"];
+
+    if (!internalSheet) {
+      window.alert("This file is not a valid Currist export file.");
+      return;
+    }
+
+    const marker = internalSheet["A1"]?.v;
+
+    if (marker !== "CURRIST_INTERNAL") {
+      window.alert("Invalid Currist internal data.");
+      return;
+    }
+
+    const projectMetaData = readInternalTable(internalSheet, "[PROJECT_META]");
+    if (projectMetaData.length > 0) {
+  setProjectCountry(
+    String(projectMetaData[0].ProjectCountry || "")
+  );
+
+  setBuildingType(
+  String(projectMetaData[0].BuildingType || "")
+);
+}
+    const structuresData = readInternalTable(internalSheet, "[STRUCTURES]");
+    const panelsData = readInternalTable(internalSheet, "[PANELS]");
+    const loadsData = readInternalTable(internalSheet, "[LOADS]");
+    const analyzersData = readInternalTable(internalSheet, "[ANALYZERS]");
+
+    console.log("PROJECT_META", projectMetaData);
+    console.log("STRUCTURES", structuresData);
+    const importedStructures = parseStructures(structuresData);
+
+    const importedPanels = parseAnalyzers(
+    analyzersData,
+    parsePanels(panelsData)
+    );
+
+    const importedLoads = parseLoads(loadsData);
+
+    console.log("IMPORTED LOADS", importedLoads);
+    setLoads(importedLoads);
+
+    console.log("IMPORTED PANELS", importedPanels);
+    setPanels(importedPanels);
+
+    console.log("IMPORTED STRUCTURES", importedStructures);
+    setStructures(importedStructures);
+    console.log("PANELS", panelsData);
+    console.log("LOADS", loadsData);
+    console.log("ANALYZERS", analyzersData);
+
+      window.alert("Structures imported successfully.");
+  } catch (error) {
+    console.error(error);
+    window.alert("Import failed. Please check the Excel file.");
+  } finally {
+    event.target.value = "";
+  }
+};
 
   const handleExportPanelToExcel = async (panel: Panel) => {
   const workbook = new ExcelJS.Workbook();
   const worksheet = workbook.addWorksheet("Panel Report");
+
+  const internalWorksheet = workbook.addWorksheet("__currist_internal__");
+  internalWorksheet.state = "veryHidden";
+
+  internalWorksheet.getCell("A1").value = "CURRIST_INTERNAL";
+  internalWorksheet.getCell("A2").value = "Export Version";
+  internalWorksheet.getCell("B2").value = "1.0";
+
+  
 
   const panelSummary = panelSummaries.find(
     (summary) => summary.panelId === panel.id
@@ -1516,8 +1792,215 @@ const buildingNode = locationChain.find((item) => item?.type === "building");
 
 const supplyPanel = panels.find((item) => item.id === panel.supplyPanelId);
 
-  worksheet.getCell("A4").value = "Project";
+worksheet.getCell("A4").value = "Project";
 worksheet.getCell("B4").value = projectNode?.name || "-";
+
+internalWorksheet.getCell("A3").value = "Export Date";
+internalWorksheet.getCell("B3").value = exportDate;
+
+internalWorksheet.getCell("A4").value = "[PROJECT_META]";
+
+internalWorksheet.getRow(5).values = [
+  "ProjectCountry",
+  "BuildingType",
+];
+
+internalWorksheet.getRow(6).values = [
+  projectCountry || "",
+  buildingType || "",
+];
+
+internalWorksheet.getCell("A8").value = "[STRUCTURES]";
+
+internalWorksheet.getRow(9).values = [
+  "ID",
+  "ParentID",
+  "Type",
+  "Name",
+  "OptionalName",
+];
+
+internalWorksheet.getRow(7).font = {
+  bold: true,
+  color: { argb: "FFFFFFFF" },
+};
+
+internalWorksheet.getRow(7).fill = {
+  type: "pattern",
+  pattern: "solid",
+  fgColor: { argb: "FF1E40AF" },
+};
+
+structures.forEach((structure, index) => {
+  const rowNumber = 10 + index;
+
+  internalWorksheet.getRow(rowNumber).values = [
+    structure.id,
+    structure.parentId ?? "",
+    structure.type,
+    structure.name,
+    structure.optionalName || "",
+  ];
+});
+
+const panelsStartRow = 12 + structures.length;
+
+internalWorksheet.getCell(`A${panelsStartRow}`).value = "[PANELS]";
+
+internalWorksheet.getRow(panelsStartRow + 1).values = [
+  "ID",
+  "StructureID",
+  "Name",
+  "PanelType",
+  "PhaseType",
+  "Description",
+  "Environment",
+  "IpRating",
+  "SupplyPanelID",
+  "SupplyPhaseLine",
+  "CableLengthM",
+  "CableType",
+  "CreatedAt",
+];
+
+internalWorksheet.getRow(panelsStartRow + 1).font = {
+  bold: true,
+  color: { argb: "FFFFFFFF" },
+};
+
+internalWorksheet.getRow(panelsStartRow + 1).fill = {
+  type: "pattern",
+  pattern: "solid",
+  fgColor: { argb: "FF1E40AF" },
+};
+
+panels.forEach((panel, index) => {
+  const rowNumber = panelsStartRow + 2 + index;
+
+  internalWorksheet.getRow(rowNumber).values = [
+    panel.id,
+    panel.structureId,
+    panel.name,
+    panel.panelType,
+    panel.phaseType,
+    panel.description || "",
+    panel.environment || "",
+    panel.ipRating || "",
+    panel.supplyPanelId ?? "",
+    panel.supplyPhaseLine || "",
+    panel.cableLengthM ?? "",
+    panel.cableType || "",
+    panel.createdAt,
+  ];
+});
+
+const loadsStartRow = panelsStartRow + 4 + panels.length;
+
+internalWorksheet.getCell(`A${loadsStartRow}`).value = "[LOADS]";
+
+internalWorksheet.getRow(loadsStartRow + 1).values = [
+  "ID",
+  "ConnectedPanelID",
+  "RoomID",
+  "ProjectCode",
+  "Description",
+  "LoadType",
+  "ManualLoadType",
+  "PowerKw",
+  "Quantity",
+  "PhaseType",
+  "PhaseLine",
+  "CosPhi",
+  "LoadCharacter",
+  "Voltage",
+  "StartingMethod",
+  "CableLengthM",
+  "CableType",
+  "Brand",
+  "Series",
+  "Model",
+  "Note",
+  "CreatedAt",
+  "UpdatedAt",
+];
+
+internalWorksheet.getRow(loadsStartRow + 1).font = {
+  bold: true,
+  color: { argb: "FFFFFFFF" },
+};
+
+internalWorksheet.getRow(loadsStartRow + 1).fill = {
+  type: "pattern",
+  pattern: "solid",
+  fgColor: { argb: "FF1E40AF" },
+};
+
+loads.forEach((load, index) => {
+  const rowNumber = loadsStartRow + 2 + index;
+
+  internalWorksheet.getRow(rowNumber).values = [
+    load.id,
+    load.connectedPanelId,
+    load.roomId,
+    load.projectCode,
+    load.description,
+    load.loadType,
+    load.manualLoadType || "",
+    load.powerKw,
+    load.quantity,
+    load.phaseType,
+    load.phaseLine || "",
+    load.cosPhi ?? "",
+    load.loadCharacter || "",
+    getVoltage(load),
+    load.startingMethod || "",
+    load.cableLengthM ?? "",
+    load.cableType || "",
+    load.brand || "",
+    load.series || "",
+    load.model || "",
+    load.note || "",
+    load.createdAt,
+    load.updatedAt || "",
+  ];
+});
+
+const analyzersStartRow = loadsStartRow + 4 + loads.length;
+
+internalWorksheet.getCell(`A${analyzersStartRow}`).value = "[ANALYZERS]";
+
+internalWorksheet.getRow(analyzersStartRow + 1).values = [
+  "PanelID",
+  "AnalyzerID",
+  "AnalyzerName",
+  "ConnectedLoadIDs",
+];
+
+internalWorksheet.getRow(analyzersStartRow + 1).font = {
+  bold: true,
+  color: { argb: "FFFFFFFF" },
+};
+
+internalWorksheet.getRow(analyzersStartRow + 1).fill = {
+  type: "pattern",
+  pattern: "solid",
+  fgColor: { argb: "FF1E40AF" },
+};
+
+let analyzerRow = analyzersStartRow + 2;
+
+panels.forEach((panel) => {
+  (panel.analyzers || []).forEach((analyzer) => {
+    internalWorksheet.getRow(analyzerRow).values = [
+      panel.id,
+      analyzer.id,
+      analyzer.name,
+      analyzer.connectedLoadIds.join(","),
+    ];
+
+    analyzerRow += 1;
+  });
+});
 
 worksheet.getCell("A5").value = "Country";
 worksheet.getCell("B5").value = projectCountry || "-";
@@ -1891,9 +2374,46 @@ worksheet.getCell(`A${cableSummaryRow}`).fill = {
 
 cableSummaryRow += 2;
 
+worksheet.mergeCells(
+  `A${cableSummaryRow}:D${cableSummaryRow}`
+);
+
+worksheet.mergeCells(
+  `E${cableSummaryRow}:F${cableSummaryRow}`
+);
+
+worksheet.getCell(`A${cableSummaryRow}`).value =
+  "Cable Type / Section";
+
+worksheet.getCell(`E${cableSummaryRow}`).value =
+  "Total Length";
+
+["A", "E"].forEach((col) => {
+  worksheet.getCell(`${col}${cableSummaryRow}`).font = {
+    bold: true,
+    color: { argb: white },
+  };
+
+  worksheet.getCell(`${col}${cableSummaryRow}`).fill = {
+    type: "pattern",
+    pattern: "solid",
+    fgColor: { argb: midBlue },
+  };
+
+  worksheet.getCell(`${col}${cableSummaryRow}`).alignment = {
+    horizontal: "center",
+    vertical: "middle",
+  };
+});
+
+cableSummaryRow += 1;
+
 Object.entries(cableSummaryMap).forEach(([cableName, length]) => {
+  worksheet.mergeCells(`A${cableSummaryRow}:D${cableSummaryRow}`);
+  worksheet.mergeCells(`E${cableSummaryRow}:F${cableSummaryRow}`);
+
   worksheet.getCell(`A${cableSummaryRow}`).value = cableName;
-  worksheet.getCell(`B${cableSummaryRow}`).value = `${formatNumber(length, 0)} m`;
+  worksheet.getCell(`E${cableSummaryRow}`).value = `${formatNumber(length, 0)} m`;
 
   worksheet.getCell(`A${cableSummaryRow}`).font = {
     bold: true,
@@ -4427,6 +4947,29 @@ const unassignedAnalyzerLoads = analyzerAssignableItems.filter(
     >
       <h3 style={{ margin: 0 }}>Structure Tree</h3>
 
+      <div style={{ display: "flex", gap: 8 }}>
+  <input
+    id="currist-import-input"
+    type="file"
+    accept=".xlsx"
+    style={{ display: "none" }}
+    onChange={handleImportCurristExcel}
+  />
+
+  <button
+    onClick={() => {
+      document.getElementById("currist-import-input")?.click();
+    }}
+    style={{
+      ...buttonStyle,
+      background: "#a78bfa",
+      color: "#0f172a",
+      cursor: "pointer",
+    }}
+  >
+    Import Project
+  </button>
+</div>
       
     </div>
 
@@ -4486,13 +5029,13 @@ const unassignedAnalyzerLoads = analyzerAssignableItems.filter(
     overflowY: "auto",
   }}
 >
-
 <h3>✅ COMPLETED FEATURES</h3>
 
 <div><strong>Structure Management</strong></div>
 <div>- Project / Building / Block / Floor / Room Structure</div>
 <div>- Country Selection With Flag Badge</div>
 <div>- Building Type Selection With Icon</div>
+<div>- Full Structure Reconstruction From Import</div>
 
 <br />
 
@@ -4510,6 +5053,7 @@ const unassignedAnalyzerLoads = analyzerAssignableItems.filter(
 <div>- Load Note / Internal Comment</div>
 <div>- Connected Panel Assignment</div>
 <div>- Unassigned Load Management</div>
+<div>- Full Load Reconstruction From Import</div>
 
 <br />
 
@@ -4523,6 +5067,7 @@ const unassignedAnalyzerLoads = analyzerAssignableItems.filter(
 <div>- Packaged Panel Supply Cable Definition</div>
 <div>- Upstream Supply Panel Connection</div>
 <div>- Connected Panel Relationships</div>
+<div>- Full Panel Reconstruction From Import</div>
 
 <br />
 
@@ -4549,11 +5094,15 @@ const unassignedAnalyzerLoads = analyzerAssignableItems.filter(
 <div>- Assigned Loads Move Under Related Analyzer</div>
 <div>- Analyzer Badge On Panel Card</div>
 <div>- Packaged Panel Feeder Assignment Support</div>
+<div>- Analyzer Reconstruction From Import</div>
 
 <br />
 
-<div><strong>Excel Export</strong></div>
+<div><strong>Project Import / Export</strong></div>
 <div>- Professional Panel Report Export</div>
+<div>- Hidden Engineering Data Sheet</div>
+<div>- Complete Project Import</div>
+<div>- Project Reconstruction From Export</div>
 <div>- Engineering Style Header</div>
 <div>- KPI Dashboard</div>
 <div>- P / Q / S Export</div>
@@ -4562,7 +5111,7 @@ const unassignedAnalyzerLoads = analyzerAssignableItems.filter(
 <div>- Phase Balance Analysis Export</div>
 <div>- Analyzer Information Export</div>
 <div>- Connected Panel Export</div>
-<div>- Starting Method Column</div>
+<div>- Starting Method Export</div>
 <div>- Cable Length Export</div>
 <div>- Cable Type Export</div>
 <div>- Load Notes Export</div>
@@ -4570,10 +5119,8 @@ const unassignedAnalyzerLoads = analyzerAssignableItems.filter(
 <div>- Multi-Row Packaged Panel Export</div>
 <div>- Analyzer Cell Merge</div>
 <div>- Packaged Panel Feeder Merge Logic</div>
-<div>- Merged Feeder Information For Packaged Panels</div>
 <div>- Engineering Load Schedule</div>
-<div>- Created Date Export</div>
-<div>- Revised Date Export</div>
+<div>- Created / Revised Date Export</div>
 <div>- Cable Summary Report</div>
 <div>- Automatic Cable Section Calculation</div>
 <div>- Voltage Drop Based Cable Sizing</div>
@@ -4582,11 +5129,11 @@ const unassignedAnalyzerLoads = analyzerAssignableItems.filter(
 
 <h3>🔨 CURRENT DEVELOPMENT</h3>
 
-<div><strong>Export Professionalization</strong></div>
-<div>- Cable Summary Positioning</div>
-<div>- Export Layout Improvements</div>
-<div>- Engineering Report Formatting</div>
-<div>- Cable Sizing Validation</div>
+<div><strong>Import / Export Architecture</strong></div>
+<div>- Shared Import / Export Schema</div>
+<div>- Version Compatibility</div>
+<div>- Import Validation</div>
+<div>- Import Safety Confirmation</div>
 
 <br />
 
@@ -4599,20 +5146,20 @@ const unassignedAnalyzerLoads = analyzerAssignableItems.filter(
 
 <br />
 
-<div><strong>Project Metadata</strong></div>
-<div>- Full Location Chain</div>
-<div>- Country Based Formatting</div>
+<div><strong>Engineering Report Improvements</strong></div>
+<div>- Export Layout Refinement</div>
+<div>- Engineering Report Formatting</div>
+<div>- Cable Sizing Validation</div>
 
 <hr style={{ margin: "16px 0", borderColor: "#334155" }} />
 
 <h3>🎯 ROADMAP</h3>
 
-<div><strong>Import / Export</strong></div>
-<div>- Excel Import</div>
-<div>- Project Reconstruction From Export</div>
+<div><strong>Project File System</strong></div>
+<div>- .currist Native Project File</div>
 <div>- Full Project Excel Export</div>
 <div>- PDF Export</div>
-<div>- .currist Project File Format</div>
+<div>- Automatic Backup</div>
 
 <br />
 
@@ -4628,9 +5175,8 @@ const unassignedAnalyzerLoads = analyzerAssignableItems.filter(
 
 <div><strong>Cable Engineering</strong></div>
 <div>- Cable Type Library</div>
-<div>- Cable Sizing Validation</div>
-<div>- Advanced Voltage Drop Parameters</div>
 <div>- Cable Schedule Report</div>
+<div>- Advanced Voltage Drop Parameters</div>
 <div>- Cable Library Expansion</div>
 
 <br />
@@ -4651,24 +5197,16 @@ const unassignedAnalyzerLoads = analyzerAssignableItems.filter(
 
 <div><strong>Documentation</strong></div>
 <div>- Technical Specification Generation</div>
-<div>- Panel Technical Specification</div>
 <div>- Bill Of Materials (BOM)</div>
 <div>- Supplier Ready Documentation</div>
 
 <br />
 
-<div><strong>Supplier Workflow</strong></div>
-<div>- Frozen Panel Status</div>
-<div>- Revision Comparison</div>
-<div>- Revision Tracking</div>
-
-<br />
-
-<div><strong>User Account & Project Memory</strong></div>
+<div><strong>User Account & Cloud</strong></div>
 <div>- User Login</div>
-<div>- Remember User Projects</div>
 <div>- Cloud Project Storage</div>
 <div>- Continue From Last Project</div>
+<div>- Project Synchronization</div>
 
 <br />
 
@@ -4678,15 +5216,14 @@ const unassignedAnalyzerLoads = analyzerAssignableItems.filter(
 
 <hr style={{ margin: "16px 0", borderColor: "#334155" }} />
 
-
 <h3>📦 VERSION INFORMATION</h3>
 
-<div>Version: 0.7.1</div>
+<div>Version: 0.8.0</div>
 <div>Developed By: Ergin Yurttaş</div>
 <div>Contact: erginyurttas@gmail.com</div>
 
 <div style={{ marginTop: 12 }}>
-  <strong>Last Update:</strong> June 20, 2026
+  <strong>Last Update:</strong> Jul 6, 2026
 </div>
 
 </div>

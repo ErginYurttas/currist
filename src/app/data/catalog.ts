@@ -2926,7 +2926,628 @@ export const catalog = [
     phaseType: "1P",
     loadCharacter: "Inductive"
   },
-
+  {
+    loadType: "Pump",
+    brand: "Wilo",
+    series: "Stratos MAXO",
+    model: "40/0,5-4 PN6/10",
+    powerKw: 0.130,
+    phaseType: "1P",
+    loadCharacter: "Inductive"
+  },
+  {
+    loadType: "Pump",
+    brand: "Wilo",
+    series: "Stratos MAXO",
+    model: "40/0,5-4 PN 16",
+    powerKw: 0.130,
+    phaseType: "1P",
+    loadCharacter: "Inductive"
+  },
+  {
+    loadType: "Pump",
+    brand: "Wilo",
+    series: "Stratos MAXO",
+    model: "40/0,5-8 PN6/10",
+    powerKw: 0.280,
+    phaseType: "1P",
+    loadCharacter: "Inductive"
+  },
+  {
+    loadType: "Pump",
+    brand: "Wilo",
+    series: "Stratos MAXO",
+    model: "40/0,5-8 PN 16",
+    powerKw: 0.280,
+    phaseType: "1P",
+    loadCharacter: "Inductive"
+  },
+  {
+    loadType: "Pump",
+    brand: "Wilo",
+    series: "Stratos MAXO",
+    model: "40/0,5-10 PN6/10",
+    powerKw: 0.235,
+    phaseType: "1P",
+    loadCharacter: "Inductive"
+  },
+  {
+    loadType: "Pump",
+    brand: "Wilo",
+    series: "Stratos MAXO",
+    model: "40/0,5-10 PN16",
+    powerKw: 0.235,
+    phaseType: "1P",
+    loadCharacter: "Inductive"
+  },
+  {
+    loadType: "Pump",
+    brand: "Wilo",
+    series: "Stratos MAXO",
+    model: "40/0,5-12 PN6/10",
+    powerKw: 0.570,
+    phaseType: "1P",
+    loadCharacter: "Inductive"
+  },
+  {
+    loadType: "Pump",
+    brand: "Wilo",
+    series: "Stratos MAXO",
+    model: "40/0,5-12 PN 16",
+    powerKw: 0.570,
+    phaseType: "1P",
+    loadCharacter: "Inductive"
+  },
+  {
+    loadType: "Pump",
+    brand: "Wilo",
+    series: "Stratos MAXO",
+    model: "40/0,5-16 PN6/10",
+    powerKw: 0.640,
+    phaseType: "1P",
+    loadCharacter: "Inductive"
+  },
+  {
+    loadType: "Pump",
+    brand: "Wilo",
+    series: "Stratos MAXO",
+    model: "40/0,5-16 PN 16",
+    powerKw: 0.640,
+    phaseType: "1P",
+    loadCharacter: "Inductive"
+  },
+  {
+    loadType: "Pump",
+    brand: "Wilo",
+    series: "Stratos MAXO",
+    model: "50/0,5-6 PN6/10",
+    powerKw: 0.270,
+    phaseType: "1P",
+    loadCharacter: "Inductive"
+  },
+  {
+    loadType: "Pump",
+    brand: "Wilo",
+    series: "Stratos MAXO",
+    model: "50/0,5-6 PN 16",
+    powerKw: 0.270,
+    phaseType: "1P",
+    loadCharacter: "Inductive"
+  },
+  {
+    loadType: "Pump",
+    brand: "Wilo",
+    series: "Stratos MAXO",
+    model: "50/0,5-8 PN6/10",
+    powerKw: 0.390,
+    phaseType: "1P",
+    loadCharacter: "Inductive"
+  },
+  {
+    loadType: "Pump",
+    brand: "Wilo",
+    series: "Stratos MAXO",
+    model: "50/0,5-8 PN 16",
+    powerKw: 0.390,
+    phaseType: "1P",
+    loadCharacter: "Inductive"
+  },
+  {
+    loadType: "Pump",
+    brand: "Wilo",
+    series: "Stratos MAXO",
+    model: "50/0,5-9 PN6/10",
+    powerKw: 0.550,
+    phaseType: "1P",
+    loadCharacter: "Inductive"
+  },
+  {
+    loadType: "Pump",
+    brand: "Wilo",
+    series: "Stratos MAXO",
+    model: "50/0,5-9 PN 16",
+    powerKw: 0.550,
+    phaseType: "1P",
+    loadCharacter: "Inductive"
+  },
+  {
+    loadType: "Pump",
+    brand: "Wilo",
+    series: "Stratos MAXO",
+    model: "50/0,5-10 PN6/10",
+    powerKw: 0.240,
+    phaseType: "1P",
+    loadCharacter: "Inductive"
+  },
+  {
+    loadType: "Pump",
+    brand: "Wilo",
+    series: "Stratos MAXO",
+    model: "50/0,5-10 PN16",
+    powerKw: 0.240,
+    phaseType: "1P",
+    loadCharacter: "Inductive"
+  },
+  {
+    loadType: "Pump",
+    brand: "Wilo",
+    series: "Stratos MAXO",
+    model: "50/0,5-12 PN6/10",
+    powerKw: 0.560,
+    phaseType: "1P",
+    loadCharacter: "Inductive"
+  },
+  {
+    loadType: "Pump",
+    brand: "Wilo",
+    series: "Stratos MAXO",
+    model: "50/0,5-12 PN16",
+    powerKw: 0.560,
+    phaseType: "1P",
+    loadCharacter: "Inductive"
+  },
+  {
+    loadType: "Pump",
+    brand: "Wilo",
+    series: "Stratos MAXO",
+    model: "50/0,5-14 PN6/10",
+    powerKw: 0.970,
+    phaseType: "1P",
+    loadCharacter: "Inductive"
+  },
+  {
+    loadType: "Pump",
+    brand: "Wilo",
+    series: "Stratos MAXO",
+    model: "50/0,5-14 PN 16",
+    powerKw: 0.970,
+    phaseType: "1P",
+    loadCharacter: "Inductive"
+  },
+  {
+    loadType: "Pump",
+    brand: "Wilo",
+    series: "Stratos MAXO",
+    model: "50/0,5-16 PN6/10",
+    powerKw: 1.480,
+    phaseType: "1P",
+    loadCharacter: "Inductive"
+  },
+  {
+    loadType: "Pump",
+    brand: "Wilo",
+    series: "Stratos MAXO",
+    model: "50/0,5-16 PN 16",
+    powerKw: 1.480,
+    phaseType: "1P",
+    loadCharacter: "Inductive"
+  },
+  {
+    loadType: "Pump",
+    brand: "Wilo",
+    series: "Stratos MAXO",
+    model: "65/0,5-6 PN6/10",
+    powerKw: 0.440,
+    phaseType: "1P",
+    loadCharacter: "Inductive"
+  },
+  {
+    loadType: "Pump",
+    brand: "Wilo",
+    series: "Stratos MAXO",
+    model: "65/0,5-6 PN 16",
+    powerKw: 0.440,
+    phaseType: "1P",
+    loadCharacter: "Inductive"
+  },
+  {
+    loadType: "Pump",
+    brand: "Wilo",
+    series: "Stratos MAXO",
+    model: "65/0,5-9 PN6/10",
+    powerKw: 0.560,
+    phaseType: "1P",
+    loadCharacter: "Inductive"
+  },
+  {
+    loadType: "Pump",
+    brand: "Wilo",
+    series: "Stratos MAXO",
+    model: "65/0,5-9 PN 16",
+    powerKw: 0.560,
+    phaseType: "1P",
+    loadCharacter: "Inductive"
+  },
+  {
+    loadType: "Pump",
+    brand: "Wilo",
+    series: "Stratos MAXO",
+    model: "65/0,5-12 PN6/10",
+    powerKw: 0.950,
+    phaseType: "1P",
+    loadCharacter: "Inductive"
+  },
+  {
+    loadType: "Pump",
+    brand: "Wilo",
+    series: "Stratos MAXO",
+    model: "65/0,5-12 PN 16",
+    powerKw: 0.950,
+    phaseType: "1P",
+    loadCharacter: "Inductive"
+  },
+  {
+    loadType: "Pump",
+    brand: "Wilo",
+    series: "Stratos MAXO",
+    model: "65/0,5-16 PN6/10",
+    powerKw: 1.440,
+    phaseType: "1P",
+    loadCharacter: "Inductive"
+  },
+  {
+    loadType: "Pump",
+    brand: "Wilo",
+    series: "Stratos MAXO",
+    model: "65/0,5-16 PN 16",
+    powerKw: 1.440,
+    phaseType: "1P",
+    loadCharacter: "Inductive"
+  },
+  {
+    loadType: "Pump",
+    brand: "Wilo",
+    series: "Stratos MAXO",
+    model: "80/0,5-6 PN6",
+    powerKw: 0.850,
+    phaseType: "1P",
+    loadCharacter: "Inductive"
+  },
+  {
+    loadType: "Pump",
+    brand: "Wilo",
+    series: "Stratos MAXO",
+    model: "80/0,5-6 PN10",
+    powerKw: 0.850,
+    phaseType: "1P",
+    loadCharacter: "Inductive"
+  },
+  {
+    loadType: "Pump",
+    brand: "Wilo",
+    series: "Stratos MAXO",
+    model: "80/0,5-6 PN 16",
+    powerKw: 0.850,
+    phaseType: "1P",
+    loadCharacter: "Inductive"
+  },
+  {
+    loadType: "Pump",
+    brand: "Wilo",
+    series: "Stratos MAXO",
+    model: "80/0,5-12 PN6",
+    powerKw: 1.410,
+    phaseType: "1P",
+    loadCharacter: "Inductive"
+  },
+  {
+    loadType: "Pump",
+    brand: "Wilo",
+    series: "Stratos MAXO",
+    model: "80/0,5-12 PN10",
+    powerKw: 1.410,
+    phaseType: "1P",
+    loadCharacter: "Inductive"
+  },
+  {
+    loadType: "Pump",
+    brand: "Wilo",
+    series: "Stratos MAXO",
+    model: "80/0,5-12 PN 16",
+    powerKw: 1.410,
+    phaseType: "1P",
+    loadCharacter: "Inductive"
+  },
+  {
+    loadType: "Pump",
+    brand: "Wilo",
+    series: "Stratos MAXO",
+    model: "80/0,5-16 PN6",
+    powerKw: 1.645,
+    phaseType: "1P",
+    loadCharacter: "Inductive"
+  },
+  {
+    loadType: "Pump",
+    brand: "Wilo",
+    series: "Stratos MAXO",
+    model: "80/0,5-16 PN10",
+    powerKw: 1.645,
+    phaseType: "1P",
+    loadCharacter: "Inductive"
+  },
+  {
+    loadType: "Pump",
+    brand: "Wilo",
+    series: "Stratos MAXO",
+    model: "80/0,5-16 PN 16",
+    powerKw: 1.645,
+    phaseType: "1P",
+    loadCharacter: "Inductive"
+  },
+  {
+    loadType: "Pump",
+    brand: "Wilo",
+    series: "Stratos MAXO",
+    model: "100/0,5-6 PN6",
+    powerKw: 0.830,
+    phaseType: "1P",
+    loadCharacter: "Inductive"
+  },
+  {
+    loadType: "Pump",
+    brand: "Wilo",
+    series: "Stratos MAXO",
+    model: "100/0,5-6 PN10",
+    powerKw: 0.830,
+    phaseType: "1P",
+    loadCharacter: "Inductive"
+  },
+  {
+    loadType: "Pump",
+    brand: "Wilo",
+    series: "Stratos MAXO",
+    model: "100/0,5-6 PN 16",
+    powerKw: 0.830,
+    phaseType: "1P",
+    loadCharacter: "Inductive"
+  },
+  {
+    loadType: "Pump",
+    brand: "Wilo",
+    series: "Stratos MAXO",
+    model: "100/0,5-12 PN6",
+    powerKw: 1.290,
+    phaseType: "1P",
+    loadCharacter: "Inductive"
+  },
+  {
+    loadType: "Pump",
+    brand: "Wilo",
+    series: "Stratos MAXO",
+    model: "100/0,5-12 PN10",
+    powerKw: 1.290,
+    phaseType: "1P",
+    loadCharacter: "Inductive"
+  },
+  {
+    loadType: "Pump",
+    brand: "Wilo",
+    series: "Stratos MAXO",
+    model: "100/0,5-12 PN 16",
+    powerKw: 1.290,
+    phaseType: "1P",
+    loadCharacter: "Inductive"
+  },
+  {
+    loadType: "Pump",
+    brand: "Wilo",
+    series: "Stratos MAXO",
+    model: "25/0,5-4 PN 10",
+    powerKw: 0.080,
+    phaseType: "1P",
+    loadCharacter: "Inductive"
+  },
+  {
+    loadType: "Pump",
+    brand: "Wilo",
+    series: "Stratos MAXO",
+    model: "25/0,5-4 PN 16",
+    powerKw: 0.080,
+    phaseType: "1P",
+    loadCharacter: "Inductive"
+  },
+  {
+    loadType: "Pump",
+    brand: "Wilo",
+    series: "Stratos MAXO",
+    model: "25/0,5-6 PN 10",
+    powerKw: 0.135,
+    phaseType: "1P",
+    loadCharacter: "Inductive"
+  },
+  {
+    loadType: "Pump",
+    brand: "Wilo",
+    series: "Stratos MAXO",
+    model: "25/0,5-6 PN 16",
+    powerKw: 0.135,
+    phaseType: "1P",
+    loadCharacter: "Inductive"
+  },
+  {
+    loadType: "Pump",
+    brand: "Wilo",
+    series: "Stratos MAXO",
+    model: "25/0,5-8 PN 10",
+    powerKw: 0.160,
+    phaseType: "1P",
+    loadCharacter: "Inductive"
+  },
+  {
+    loadType: "Pump",
+    brand: "Wilo",
+    series: "Stratos MAXO",
+    model: "25/0,5-8 PN 16",
+    powerKw: 0.160,
+    phaseType: "1P",
+    loadCharacter: "Inductive"
+  },
+  {
+    loadType: "Pump",
+    brand: "Wilo",
+    series: "Stratos MAXO",
+    model: "25/0,5-10 PN 10",
+    powerKw: 0.275,
+    phaseType: "1P",
+    loadCharacter: "Inductive"
+  },
+  {
+    loadType: "Pump",
+    brand: "Wilo",
+    series: "Stratos MAXO",
+    model: "25/0,5-10 PN 16",
+    powerKw: 0.275,
+    phaseType: "1P",
+    loadCharacter: "Inductive"
+  },
+  {
+    loadType: "Pump",
+    brand: "Wilo",
+    series: "Stratos MAXO",
+    model: "25/0,5-12 PN 10",
+    powerKw: 0.295,
+    phaseType: "1P",
+    loadCharacter: "Inductive"
+  },
+  {
+    loadType: "Pump",
+    brand: "Wilo",
+    series: "Stratos MAXO",
+    model: "25/0,5-12 PN 16",
+    powerKw: 0.295,
+    phaseType: "1P",
+    loadCharacter: "Inductive"
+  },
+  {
+    loadType: "Pump",
+    brand: "Wilo",
+    series: "Stratos MAXO",
+    model: "30/0,5-4 PN 10",
+    powerKw: 0.080,
+    phaseType: "1P",
+    loadCharacter: "Inductive"
+  },
+  {
+    loadType: "Pump",
+    brand: "Wilo",
+    series: "Stratos MAXO",
+    model: "30/0,5-4 PN 16",
+    powerKw: 0.080,
+    phaseType: "1P",
+    loadCharacter: "Inductive"
+  },
+  {
+    loadType: "Pump",
+    brand: "Wilo",
+    series: "Stratos MAXO",
+    model: "30/0,5-6 PN 10",
+    powerKw: 0.135,
+    phaseType: "1P",
+    loadCharacter: "Inductive"
+  },
+  {
+    loadType: "Pump",
+    brand: "Wilo",
+    series: "Stratos MAXO",
+    model: "30/0,5-6 PN 16",
+    powerKw: 0.135,
+    phaseType: "1P",
+    loadCharacter: "Inductive"
+  },
+  {
+    loadType: "Pump",
+    brand: "Wilo",
+    series: "Stratos MAXO",
+    model: "30/0,5-8 PN 10",
+    powerKw: 0.160,
+    phaseType: "1P",
+    loadCharacter: "Inductive"
+  },
+  {
+    loadType: "Pump",
+    brand: "Wilo",
+    series: "Stratos MAXO",
+    model: "30/0,5-8 PN 16",
+    powerKw: 0.160,
+    phaseType: "1P",
+    loadCharacter: "Inductive"
+  },
+  {
+    loadType: "Pump",
+    brand: "Wilo",
+    series: "Stratos MAXO",
+    model: "30/0,5-10 PN 10",
+    powerKw: 0.275,
+    phaseType: "1P",
+    loadCharacter: "Inductive"
+  },
+  {
+    loadType: "Pump",
+    brand: "Wilo",
+    series: "Stratos MAXO",
+    model: "30/0,5-10 PN 16",
+    powerKw: 0.275,
+    phaseType: "1P",
+    loadCharacter: "Inductive"
+  },
+  {
+    loadType: "Pump",
+    brand: "Wilo",
+    series: "Stratos MAXO",
+    model: "30/0,5-12 PN 10",
+    powerKw: 0.295,
+    phaseType: "1P",
+    loadCharacter: "Inductive"
+  },
+  {
+    loadType: "Pump",
+    brand: "Wilo",
+    series: "Stratos MAXO",
+    model: "30/0,5-12 PN 16",
+    powerKw: 0.295,
+    phaseType: "1P",
+    loadCharacter: "Inductive"
+  },
+  {
+    loadType: "Pump",
+    brand: "Wilo",
+    series: "Stratos MAXO",
+    model: "30/0,5-14 PN 10",
+    powerKw: 0.340,
+    phaseType: "1P",
+    loadCharacter: "Inductive"
+  },
+  {
+    loadType: "Pump",
+    brand: "Wilo",
+    series: "Stratos MAXO",
+    model: "30/0,5-14 PN 16",
+    powerKw: 0.340,
+    phaseType: "1P",
+    loadCharacter: "Inductive"
+  },
+  
 
 
 
