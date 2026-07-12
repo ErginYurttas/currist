@@ -189,6 +189,20 @@ export default function Home() {
   const [selectedPanelDetail, setSelectedPanelDetail] = useState<Panel | null>(null);
   const [welcomeOpen, setWelcomeOpen] = useState(true);
   const [helpOpen, setHelpOpen] = useState(false);
+  const [importModeOpen, setImportModeOpen] = useState(false);
+  const [pendingImportFile, setPendingImportFile] = useState<File | null>(null);
+  const [canRestoreEntireProject, setCanRestoreEntireProject] = useState(false);
+
+  const [panelLocationOpen, setPanelLocationOpen] = useState(false);
+
+  const [importProjectName, setImportProjectName] = useState("");
+  const [importBuildingName, setImportBuildingName] = useState("");
+  const [importBlockName, setImportBlockName] = useState("");
+  const [importFloorName, setImportFloorName] = useState("");
+  const [importRoomName, setImportRoomName] = useState("");
+  const [importRoomOptionalName, setImportRoomOptionalName] = useState("");
+  const [importCountry, setImportCountry] = useState("");
+  const [importBuildingType, setImportBuildingType] = useState("");
   
 
   const [projectCode, setProjectCode] = useState("");
@@ -1174,6 +1188,18 @@ const getPanelsByNode = (nodeId: number) => {
   const totalSinglePhasePowerKw =
     phaseLoadsKw.R + phaseLoadsKw.S + phaseLoadsKw.T;
 
+    const projectLoadCount =
+  loads.filter((load) => {
+    const connectedPanel = panels.find(
+      (panel) => panel.id === load.connectedPanelId
+    );
+
+    return connectedPanel?.panelType !== "Packaged Panel";
+  }).length +
+  panels.filter(
+    (panel) => panel.panelType === "Packaged Panel"
+  ).length;
+
   const estimatedCurrentA = loads.reduce((sum, load) => {
     const totalPowerW = load.powerKw * load.quantity * 1000;
     const cosValue = load.cosPhi && load.cosPhi > 0 ? load.cosPhi : 1;
@@ -1233,7 +1259,7 @@ const getPanelsByNode = (nodeId: number) => {
     capacitivePowerKw,
     phaseLoadsKw,
     totalSinglePhasePowerKw,
-    totalLoadCount: loads.length,
+    totalLoadCount: projectLoadCount,
     totalP,
     totalQ,
     totalS,
@@ -1619,21 +1645,12 @@ const parseAnalyzers = (
   return updatedPanels;
 };
 
-const handleImportCurristExcel = async (
+const handleImportFileSelection = async (
   event: React.ChangeEvent<HTMLInputElement>
 ) => {
   const file = event.target.files?.[0];
 
   if (!file) return;
-
-  const confirmed = window.confirm(
-  "Importing a project will replace the current project. Continue?"
-);
-
-if (!confirmed) {
-  event.target.value = "";
-  return;
-}
 
   try {
     const buffer = await file.arrayBuffer();
@@ -1656,50 +1673,661 @@ if (!confirmed) {
       return;
     }
 
-    const projectMetaData = readInternalTable(internalSheet, "[PROJECT_META]");
-    if (projectMetaData.length > 0) {
-  setProjectCountry(
-    String(projectMetaData[0].ProjectCountry || "")
+    const projectMetaData = readInternalTable(
+      internalSheet,
+      "[PROJECT_META]"
+    );
+
+    const structuresData = readInternalTable(
+      internalSheet,
+      "[STRUCTURES]"
+    );
+
+    const panelsData = readInternalTable(
+      internalSheet,
+      "[PANELS]"
+    );
+
+    const loadsData = readInternalTable(
+      internalSheet,
+      "[LOADS]"
+    );
+
+    const canRestore =
+      projectMetaData.length > 0 &&
+      structuresData.length > 0 &&
+      panelsData.length > 0 &&
+      loadsData.length > 0;
+
+    setPendingImportFile(file);
+    setCanRestoreEntireProject(canRestore);
+    setImportModeOpen(true);
+  } catch (error) {
+    console.error(error);
+    window.alert("Import file could not be read.");
+  } finally {
+    event.target.value = "";
+  }
+};
+
+  const preparePanelImport = async (file: File) => {
+  try {
+    const buffer = await file.arrayBuffer();
+
+    const workbook = XLSX.read(buffer, {
+      type: "array",
+    });
+
+    const internalSheet = workbook.Sheets["__currist_internal__"];
+    const reportSheet = workbook.Sheets["Panel Report"];
+
+    if (!internalSheet || !reportSheet) {
+      window.alert("This file does not contain valid panel import data.");
+      return;
+    }
+
+    const projectMetaData = readInternalTable(
+      internalSheet,
+      "[PROJECT_META]"
+    );
+
+    const structuresData = readInternalTable(
+      internalSheet,
+      "[STRUCTURES]"
+    );
+
+    const panelsData = readInternalTable(
+      internalSheet,
+      "[PANELS]"
+    );
+
+    const sourcePanelName = String(reportSheet["A1"]?.v || "");
+
+    const sourcePanel = panelsData.find(
+      (row) => String(row.Name) === sourcePanelName
+    );
+
+    if (!sourcePanel) {
+      window.alert("The exported panel could not be identified.");
+      return;
+    }
+
+    const sourceStructureId = Number(sourcePanel.StructureID);
+
+    const sourceStructures = parseStructures(structuresData);
+
+    const selectedLocation = sourceStructures.find(
+      (item) => item.id === sourceStructureId
+    );
+
+    const locationChain: Structure[] = [];
+
+    let currentLocation = selectedLocation;
+
+    while (currentLocation) {
+      locationChain.unshift(currentLocation);
+
+      currentLocation = sourceStructures.find(
+        (item) => item.id === currentLocation?.parentId
+      );
+    }
+
+    const projectNode = locationChain.find(
+      (item) => item.type === "project"
+    );
+
+    const buildingNode = locationChain.find(
+      (item) => item.type === "building"
+    );
+
+    const blockNode = locationChain.find(
+      (item) => item.type === "block"
+    );
+
+    const floorNode = locationChain.find(
+      (item) => item.type === "floor"
+    );
+
+    const roomNode = locationChain.find(
+      (item) => item.type === "room"
+    );
+
+    setImportProjectName(projectNode?.name || "");
+    setImportBuildingName(buildingNode?.name || "");
+    setImportBlockName(blockNode?.name || "");
+    setImportFloorName(floorNode?.name || "");
+    setImportRoomName(roomNode?.name || "");
+    setImportRoomOptionalName(roomNode?.optionalName || "");
+
+    setImportCountry(
+      String(projectMetaData[0]?.ProjectCountry || "")
+    );
+
+    setImportBuildingType(
+      String(projectMetaData[0]?.BuildingType || "")
+    );
+
+    setImportModeOpen(false);
+    setPanelLocationOpen(true);
+  } catch (error) {
+    console.error(error);
+    window.alert("Panel import data could not be prepared.");
+  }
+};
+
+  const createPanelImportLocation = () => {
+  const projectName = importProjectName.trim();
+  const buildingName = importBuildingName.trim();
+  const blockName = importBlockName.trim();
+  const floorName = importFloorName.trim();
+  const roomName = importRoomName.trim();
+  const roomOptionalName = importRoomOptionalName.trim();
+
+  if (!projectName || !buildingName || !floorName || !roomName) {
+    window.alert(
+      "Project, Building, Floor and Room fields are required."
+    );
+
+    return null;
+  }
+
+  const nextStructures = [...structures];
+
+  let nextId = Date.now();
+
+  const createId = () => {
+    nextId += 1;
+    return nextId;
+  };
+
+  const namesMatch = (first: string, second: string) =>
+    first.trim().toLowerCase() === second.trim().toLowerCase();
+
+  let projectNode = nextStructures.find(
+    (item) =>
+      item.type === "project" &&
+      item.parentId === null &&
+      namesMatch(item.name, projectName)
   );
 
-  setBuildingType(
-  String(projectMetaData[0].BuildingType || "")
-);
-}
-    const structuresData = readInternalTable(internalSheet, "[STRUCTURES]");
-    const panelsData = readInternalTable(internalSheet, "[PANELS]");
-    const loadsData = readInternalTable(internalSheet, "[LOADS]");
-    const analyzersData = readInternalTable(internalSheet, "[ANALYZERS]");
+  if (!projectNode) {
+    projectNode = {
+      id: createId(),
+      name: projectName,
+      type: "project",
+      parentId: null,
+      createdAt: Date.now(),
+    };
 
-    console.log("PROJECT_META", projectMetaData);
-    console.log("STRUCTURES", structuresData);
+    nextStructures.push(projectNode);
+  }
+
+  let buildingNode = nextStructures.find(
+    (item) =>
+      item.type === "building" &&
+      item.parentId === projectNode.id &&
+      namesMatch(item.name, buildingName)
+  );
+
+  if (!buildingNode) {
+    buildingNode = {
+      id: createId(),
+      name: buildingName,
+      type: "building",
+      parentId: projectNode.id,
+      createdAt: Date.now(),
+    };
+
+    nextStructures.push(buildingNode);
+  }
+
+  let floorParentId = buildingNode.id;
+
+  if (blockName) {
+    let blockNode = nextStructures.find(
+      (item) =>
+        item.type === "block" &&
+        item.parentId === buildingNode.id &&
+        namesMatch(item.name, blockName)
+    );
+
+    if (!blockNode) {
+      blockNode = {
+        id: createId(),
+        name: blockName,
+        type: "block",
+        parentId: buildingNode.id,
+        createdAt: Date.now(),
+      };
+
+      nextStructures.push(blockNode);
+    }
+
+    floorParentId = blockNode.id;
+  }
+
+  let floorNode = nextStructures.find(
+    (item) =>
+      item.type === "floor" &&
+      item.parentId === floorParentId &&
+      namesMatch(item.name, floorName)
+  );
+
+  if (!floorNode) {
+    floorNode = {
+      id: createId(),
+      name: floorName,
+      type: "floor",
+      parentId: floorParentId,
+      createdAt: Date.now(),
+    };
+
+    nextStructures.push(floorNode);
+  }
+
+  let roomNode = nextStructures.find(
+    (item) =>
+      item.type === "room" &&
+      item.parentId === floorNode.id &&
+      namesMatch(item.name, roomName)
+  );
+
+  if (!roomNode) {
+    roomNode = {
+      id: createId(),
+      name: roomName,
+      optionalName: roomOptionalName || undefined,
+      type: "room",
+      parentId: floorNode.id,
+      createdAt: Date.now(),
+    };
+
+    nextStructures.push(roomNode);
+  }
+
+  return {
+    nextStructures,
+    roomId: roomNode.id,
+  };
+};
+
+  const performPanelImport = async (file: File) => {
+  try {
+    const buffer = await file.arrayBuffer();
+
+    const workbook = XLSX.read(buffer, {
+      type: "array",
+    });
+
+    const internalSheet = workbook.Sheets["__currist_internal__"];
+    const reportSheet = workbook.Sheets["Panel Report"];
+
+    if (!internalSheet || !reportSheet) {
+      window.alert("This file does not contain valid panel import data.");
+      return;
+    }
+
+    const structuresData = readInternalTable(
+      internalSheet,
+      "[STRUCTURES]"
+    );
+
+    const panelsData = readInternalTable(
+      internalSheet,
+      "[PANELS]"
+    );
+
+    const loadsData = readInternalTable(
+      internalSheet,
+      "[LOADS]"
+    );
+
+    const analyzersData = readInternalTable(
+      internalSheet,
+      "[ANALYZERS]"
+    );
+
+    const locationResult = createPanelImportLocation();
+
+    if (!locationResult) return;
+
+    console.log("PANEL IMPORT LOCATION", locationResult);
+
+    const sourcePanelName = String(reportSheet["A1"]?.v || "");
+
+    const sourcePanelRow = panelsData.find(
+    (row) => String(row.Name) === sourcePanelName
+    );
+
+    if (!sourcePanelRow) {
+    window.alert("The exported panel could not be identified.");
+    return;
+  }
+
+  const sourcePackagedPanelRows = panelsData.filter(
+  (row) =>
+    row.PanelType === "Packaged Panel" &&
+    Number(row.SupplyPanelID) === Number(sourcePanelRow.ID)
+  );
+
+  console.log(
+  "SOURCE PACKAGED PANELS",
+  sourcePackagedPanelRows
+  );
+
+    console.log("SOURCE PANEL ROW", sourcePanelRow);
+
+
+
+    const newPanelId = Date.now();
+
+    const panelIdMap = new Map<number, number>();
+
+panelIdMap.set(
+  Number(sourcePanelRow.ID),
+  newPanelId
+);
+
+const importedPackagedPanels: Panel[] = sourcePackagedPanelRows.map(
+  (row, index) => {
+    const newPackagedPanelId = Date.now() + index + 1000;
+
+    panelIdMap.set(
+      Number(row.ID),
+      newPackagedPanelId
+    );
+
+    return {
+      id: newPackagedPanelId,
+      structureId: locationResult.roomId,
+      name: String(row.Name),
+      panelType: row.PanelType as PanelType,
+      phaseType: row.PhaseType as PanelPhaseType,
+      description:
+        row.Description === ""
+          ? undefined
+          : String(row.Description),
+      environment:
+        row.Environment === ""
+          ? undefined
+          : (row.Environment as "Indoor" | "Outdoor"),
+      ipRating:
+        row.IpRating === ""
+          ? undefined
+          : String(row.IpRating),
+      supplyPanelId: newPanelId,
+      supplyPhaseLine:
+        row.SupplyPhaseLine === ""
+          ? undefined
+          : (row.SupplyPhaseLine as PhaseLine),
+      cableLengthM:
+        row.CableLengthM === ""
+          ? undefined
+          : Number(row.CableLengthM),
+      cableType:
+        row.CableType === ""
+          ? undefined
+          : (row.CableType as CableType),
+      createdAt: Date.now(),
+      analyzers: [],
+    };
+  }
+);
+
+const importedPanel: Panel = {
+  id: newPanelId,
+  structureId: locationResult.roomId,
+  name: String(sourcePanelRow.Name),
+  panelType: sourcePanelRow.PanelType as PanelType,
+  phaseType: sourcePanelRow.PhaseType as PanelPhaseType,
+  description:
+    sourcePanelRow.Description === ""
+      ? undefined
+      : String(sourcePanelRow.Description),
+  environment:
+    sourcePanelRow.Environment === ""
+      ? undefined
+      : (sourcePanelRow.Environment as "Indoor" | "Outdoor"),
+  ipRating:
+    sourcePanelRow.IpRating === ""
+      ? undefined
+      : String(sourcePanelRow.IpRating),
+  supplyPanelId: undefined,
+  supplyPhaseLine:
+    sourcePanelRow.SupplyPhaseLine === ""
+      ? undefined
+      : (sourcePanelRow.SupplyPhaseLine as PhaseLine),
+  cableLengthM:
+    sourcePanelRow.CableLengthM === ""
+      ? undefined
+      : Number(sourcePanelRow.CableLengthM),
+  cableType:
+    sourcePanelRow.CableType === ""
+      ? undefined
+      : (sourcePanelRow.CableType as CableType),
+  createdAt: Date.now(),
+  analyzers: [],
+};
+
+    const loadIdMap = new Map<number, number>();
+
+const sourcePanelRows = [
+  sourcePanelRow,
+  ...sourcePackagedPanelRows,
+];
+
+    const importedLoads: Load[] = loadsData
+  .filter((row) =>
+    sourcePanelRows.some(
+      (panelRow) =>
+        Number(panelRow.ID) === Number(row.ConnectedPanelID)
+    )
+  )
+  .map((row, index) => ({
+    id: (() => {
+  const newLoadId = Date.now() + index + 100;
+
+  loadIdMap.set(Number(row.ID), newLoadId);
+
+  return newLoadId;
+})(),
+    connectedPanelId:
+    panelIdMap.get(Number(row.ConnectedPanelID)) ?? newPanelId,
+    roomId: locationResult.roomId,
+
+    projectCode: String(row.ProjectCode),
+    description: String(row.Description),
+
+    loadType: row.LoadType as LoadType,
+
+    manualLoadType:
+      row.ManualLoadType === ""
+        ? undefined
+        : (row.ManualLoadType as ManualLoadType),
+
+    powerKw: Number(row.PowerKw),
+    quantity: Number(row.Quantity),
+
+    phaseType: row.PhaseType as PhaseType,
+
+    phaseLine:
+      row.PhaseLine === ""
+        ? undefined
+        : (row.PhaseLine as PhaseLine),
+
+    cosPhi:
+      row.CosPhi === ""
+        ? undefined
+        : Number(row.CosPhi),
+
+    loadCharacter:
+      row.LoadCharacter === ""
+        ? undefined
+        : (row.LoadCharacter as LoadCharacter),
+
+    startingMethod:
+      row.StartingMethod === ""
+        ? undefined
+        : String(row.StartingMethod),
+
+    cableLengthM:
+      row.CableLengthM === ""
+        ? undefined
+        : Number(row.CableLengthM),
+
+    cableType:
+      row.CableType === ""
+        ? undefined
+        : (row.CableType as CableType),
+
+    brand: String(row.Brand || ""),
+    series: String(row.Series || ""),
+    model: String(row.Model || ""),
+
+    note:
+      row.Note === ""
+        ? undefined
+        : String(row.Note),
+
+    createdAt: Date.now(),
+    updatedAt: undefined,
+  }));
+
+  const importedAnalyzers = analyzersData.filter(
+  (row) => Number(row.PanelID) === Number(sourcePanelRow.ID)
+);
+
+console.log("IMPORTED ANALYZERS", importedAnalyzers);
+
+const mappedAnalyzers: PanelAnalyzer[] = importedAnalyzers.map((row) => ({
+  id: Date.now() + Number(row.AnalyzerID) % 100000,
+  name: String(row.AnalyzerName),
+  connectedLoadIds: String(row.ConnectedLoadIDs || "")
+  .split(",")
+  .map(Number)
+  .map((oldConnectedId) => {
+    if (oldConnectedId > 0) {
+      return loadIdMap.get(oldConnectedId);
+    }
+
+    if (oldConnectedId < 0) {
+      const newPackagedPanelId = panelIdMap.get(
+        Math.abs(oldConnectedId)
+      );
+
+      return newPackagedPanelId !== undefined
+        ? -newPackagedPanelId
+        : undefined;
+    }
+
+    return undefined;
+  })
+  .filter(
+    (newConnectedId): newConnectedId is number =>
+      newConnectedId !== undefined
+  ),
+}));
+
+importedPanel.analyzers = mappedAnalyzers;
+
+const allImportedPanels: Panel[] = [
+  importedPanel,
+  ...importedPackagedPanels,
+];
+
+    setStructures(locationResult.nextStructures);
+    setPanels((prev) => [...prev, ...allImportedPanels]);
+    setLoads((prev) => [...prev, ...importedLoads]);
+    setCollapsedIds([]);
+    setSelectedParent(null);
+
+    setPanelLocationOpen(false);
+    setPendingImportFile(null);
+
+    window.alert("Panel location created successfully.");
+    return;
+
+    
+  } catch (error) {
+    console.error(error);
+    window.alert("Panel import failed.");
+  }
+};
+
+  const performProjectImport = async (file: File) => {
+  try {
+    const buffer = await file.arrayBuffer();
+
+    const workbook = XLSX.read(buffer, {
+      type: "array",
+    });
+
+    const internalSheet = workbook.Sheets["__currist_internal__"];
+
+    if (!internalSheet) {
+      window.alert("This file is not a valid Currist export file.");
+      return;
+    }
+
+    const projectMetaData = readInternalTable(
+      internalSheet,
+      "[PROJECT_META]"
+    );
+
+    const structuresData = readInternalTable(
+      internalSheet,
+      "[STRUCTURES]"
+    );
+
+    const panelsData = readInternalTable(
+      internalSheet,
+      "[PANELS]"
+    );
+
+    const loadsData = readInternalTable(
+      internalSheet,
+      "[LOADS]"
+    );
+
+    const analyzersData = readInternalTable(
+      internalSheet,
+      "[ANALYZERS]"
+    );
+
     const importedStructures = parseStructures(structuresData);
 
     const importedPanels = parseAnalyzers(
-    analyzersData,
-    parsePanels(panelsData)
+      analyzersData,
+      parsePanels(panelsData)
     );
 
     const importedLoads = parseLoads(loadsData);
 
-    console.log("IMPORTED LOADS", importedLoads);
+    if (projectMetaData.length > 0) {
+      setProjectCountry(
+        String(projectMetaData[0].ProjectCountry || "")
+      );
+
+      setBuildingType(
+        String(projectMetaData[0].BuildingType || "")
+      );
+    }
+
+    setStructures(importedStructures);
+    setPanels(importedPanels);
     setLoads(importedLoads);
 
-    console.log("IMPORTED PANELS", importedPanels);
-    setPanels(importedPanels);
+    setSelectedParent(null);
+    setCollapsedIds([]);
+    setExpandedPanels({});
 
-    console.log("IMPORTED STRUCTURES", importedStructures);
-    setStructures(importedStructures);
-    console.log("PANELS", panelsData);
-    console.log("LOADS", loadsData);
-    console.log("ANALYZERS", analyzersData);
+    setImportModeOpen(false);
+    setPendingImportFile(null);
 
-      window.alert("Structures imported successfully.");
+    window.alert("Project restored successfully.");
   } catch (error) {
     console.error(error);
-    window.alert("Import failed. Please check the Excel file.");
-  } finally {
-    event.target.value = "";
+    window.alert("Project restore failed.");
   }
 };
 
@@ -1777,6 +2405,8 @@ if (!confirmed) {
   const panelLocation = structures.find(
   (structure) => structure.id === panel.structureId
 );
+
+
 
 const parent1 = structures.find((s) => s.id === panelLocation?.parentId);
 const parent2 = structures.find((s) => s.id === parent1?.parentId);
@@ -2733,7 +3363,7 @@ for (let rowNumber = tableHeaderRow + 1; rowNumber < currentExcelRow; rowNumber+
 
   const buffer = await workbook.xlsx.writeBuffer();
 
-  saveAs(new Blob([buffer]), `${panel.name}_report.xlsx`);
+  saveAs(new Blob([buffer]), `${panel.name} - Panel Report.xlsx`);
 };
 
   const renderPanelCard = (panel: Panel) => {
@@ -4953,7 +5583,7 @@ const unassignedAnalyzerLoads = analyzerAssignableItems.filter(
     type="file"
     accept=".xlsx"
     style={{ display: "none" }}
-    onChange={handleImportCurristExcel}
+    onChange={handleImportFileSelection}
   />
 
   <button
@@ -4981,6 +5611,317 @@ const unassignedAnalyzerLoads = analyzerAssignableItems.filter(
 
 {selectedPanelDetail &&
   renderPanelDetailModal(selectedPanelDetail)}
+
+  {importModeOpen && pendingImportFile && (
+  <>
+    <div
+      onClick={() => {
+        setImportModeOpen(false);
+        setPendingImportFile(null);
+      }}
+      style={{
+        position: "fixed",
+        inset: 0,
+        background: "rgba(15, 23, 42, 0.65)",
+        zIndex: 10000,
+      }}
+    />
+
+    <div
+      style={{
+        position: "fixed",
+        top: "50%",
+        left: "50%",
+        transform: "translate(-50%, -50%)",
+        width: 620,
+        maxWidth: "calc(100vw - 40px)",
+        background: "#111827",
+        border: "1px solid #334155",
+        borderRadius: 18,
+        padding: 24,
+        zIndex: 10001,
+        boxShadow: "0 25px 60px rgba(0,0,0,0.45)",
+      }}
+    >
+      <h2 style={{ marginTop: 0 }}>Import Mode</h2>
+
+      <p style={{ opacity: 0.8 }}>
+        How would you like to use this file?
+      </p>
+
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "1fr 1fr",
+          gap: 14,
+          marginTop: 20,
+        }}
+      >
+        <button
+          onClick={async () => {
+          if (!pendingImportFile) return;
+
+          await preparePanelImport(pendingImportFile);
+          }}
+          style={{
+            ...buttonStyle,
+            minHeight: 120,
+            background: "#38bdf8",
+            cursor: "pointer",
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "center",
+            gap: 8,
+          }}
+        >
+          <strong style={{ fontSize: 17 }}>▣ Import Panel Only</strong>
+
+          <span style={{ fontSize: 12, fontWeight: "normal" }}>
+            Keep the current project and add only the exported panel.
+          </span>
+        </button>
+
+        <button
+          disabled={!canRestoreEntireProject}
+          onClick={async () => {
+          if (!pendingImportFile) return;
+
+          const confirmed = window.confirm(
+          "Your current project will be replaced. Continue?"
+          );
+
+          if (!confirmed) return;
+
+          await performProjectImport(pendingImportFile);
+          }}
+          style={{
+            ...buttonStyle,
+            minHeight: 120,
+            background: canRestoreEntireProject ? "#f59e0b" : "#334155",
+            color: canRestoreEntireProject ? "#0f172a" : "#94a3b8",
+            cursor: canRestoreEntireProject ? "pointer" : "not-allowed",
+            opacity: canRestoreEntireProject ? 1 : 0.65,
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "center",
+            gap: 8,
+          }}
+        >
+          <strong style={{ fontSize: 17 }}>▣ ▣ ▣ Restore Entire Project</strong>
+
+          <span style={{ fontSize: 12, fontWeight: "normal" }}>
+            {canRestoreEntireProject
+              ? "Replace the current project with all data in this file."
+              : "Full project data is not available in this file."}
+          </span>
+        </button>
+      </div>
+
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "flex-end",
+          marginTop: 20,
+        }}
+      >
+        <button
+          onClick={() => {
+            setImportModeOpen(false);
+            setPendingImportFile(null);
+          }}
+          style={{
+            ...buttonStyle,
+            background: "#334155",
+            color: "white",
+            cursor: "pointer",
+          }}
+        >
+          Cancel
+        </button>
+      </div>
+    </div>
+  </>
+)}
+
+{panelLocationOpen && pendingImportFile && (
+  <>
+    <div
+      onClick={() => {
+        setPanelLocationOpen(false);
+        setPendingImportFile(null);
+      }}
+      style={{
+        position: "fixed",
+        inset: 0,
+        background: "rgba(15, 23, 42, 0.65)",
+        zIndex: 10000,
+      }}
+    />
+
+    <div
+      style={{
+        position: "fixed",
+        top: "50%",
+        left: "50%",
+        transform: "translate(-50%, -50%)",
+        width: 680,
+        maxWidth: "calc(100vw - 40px)",
+        background: "#111827",
+        border: "1px solid #334155",
+        borderRadius: 18,
+        padding: 24,
+        zIndex: 10001,
+        boxShadow: "0 25px 60px rgba(0,0,0,0.45)",
+      }}
+    >
+      <h2 style={{ marginTop: 0 }}>Panel Location</h2>
+
+      <p style={{ opacity: 0.8 }}>
+        Review or edit the destination before importing the panel.
+      </p>
+
+      <input
+  style={{
+    ...fieldStyle,
+    width: "100%",
+    boxSizing: "border-box",
+    marginTop: 16,
+  }}
+  placeholder="Project Name"
+  value={importProjectName}
+  onChange={(e) => setImportProjectName(e.target.value)}
+/>
+
+<input
+  style={{
+    ...fieldStyle,
+    width: "100%",
+    boxSizing: "border-box",
+    marginTop: 12,
+  }}
+  placeholder="Building Name"
+  value={importBuildingName}
+  onChange={(e) => setImportBuildingName(e.target.value)}
+/>
+
+<input
+  style={{
+    ...fieldStyle,
+    width: "100%",
+    boxSizing: "border-box",
+    marginTop: 12,
+  }}
+  placeholder="Block Name"
+  value={importBlockName}
+  onChange={(e) => setImportBlockName(e.target.value)}
+/>
+
+<input
+  style={{
+    ...fieldStyle,
+    width: "100%",
+    boxSizing: "border-box",
+    marginTop: 12,
+  }}
+  placeholder="Floor"
+  value={importFloorName}
+  onChange={(e) => setImportFloorName(e.target.value)}
+/>
+
+<input
+  style={{
+    ...fieldStyle,
+    width: "100%",
+    boxSizing: "border-box",
+    marginTop: 12,
+  }}
+  placeholder="Room"
+  value={importRoomName}
+  onChange={(e) => setImportRoomName(e.target.value)}
+/>
+
+<input
+  style={{
+    ...fieldStyle,
+    width: "100%",
+    boxSizing: "border-box",
+    marginTop: 12,
+  }}
+  placeholder="Room Description"
+  value={importRoomOptionalName}
+  onChange={(e) => setImportRoomOptionalName(e.target.value)}
+/>
+
+<select
+  style={{
+    ...fieldStyle,
+    width: "100%",
+    boxSizing: "border-box",
+    marginTop: 12,
+  }}
+  value={importCountry}
+  onChange={(e) => setImportCountry(e.target.value)}
+>
+  <option value="">Select Country</option>
+
+  {countryOptions.map((country) => (
+    <option key={country} value={country}>
+      {countryFlags[country] || "🌍"} {country}
+    </option>
+  ))}
+</select>
+
+<select
+  style={{
+    ...fieldStyle,
+    width: "100%",
+    boxSizing: "border-box",
+    marginTop: 12,
+  }}
+  value={importBuildingType}
+  onChange={(e) => setImportBuildingType(e.target.value)}
+>
+  <option value="">Select Building Type</option>
+
+  {buildingTypeOptions.map((item) => (
+    <option key={item} value={item}>
+      {buildingTypeIcons[item] || "🏗️"} {item}
+    </option>
+  ))}
+</select>
+
+      <button
+        onClick={() => {
+          setPanelLocationOpen(false);
+          setPendingImportFile(null);
+        }}
+        style={{
+          ...buttonStyle,
+          background: "#334155",
+          color: "white",
+          cursor: "pointer",
+        }}
+      >
+        Cancel
+      </button>
+
+      <button
+      onClick={async () => {
+      if (!pendingImportFile) return;
+
+      await performPanelImport(pendingImportFile);
+      }}
+    style={{
+      ...buttonStyle,
+      cursor: "pointer",
+    }}
+  >
+    Create & Import
+  </button>
+    </div>
+    
+  </>
+)}
 
 {welcomeOpen && (
   <>
@@ -5035,7 +5976,12 @@ const unassignedAnalyzerLoads = analyzerAssignableItems.filter(
 <div>- Project / Building / Block / Floor / Room Structure</div>
 <div>- Country Selection With Flag Badge</div>
 <div>- Building Type Selection With Icon</div>
-<div>- Full Structure Reconstruction From Import</div>
+<div>- Alphabetical / Created Date Sorting</div>
+<div>- Create / Edit / Delete Structure Nodes</div>
+<div>- Full Structure Reconstruction From Project Import</div>
+<div>- Automatic Destination Structure Creation For Panel Import</div>
+<div>- Existing Structure Reuse During Panel Import</div>
+<div>- Editable Panel Import Destination</div>
 
 <br />
 
@@ -5048,12 +5994,16 @@ const unassignedAnalyzerLoads = analyzerAssignableItems.filter(
 <div>- R / S / T Line Selection</div>
 <div>- Load Character And Cos φ Selection</div>
 <div>- Starting Method Definition</div>
+<div>- Starting Method Display In Load Detail</div>
 <div>- Cable Length Entry</div>
 <div>- Cable Type Definition</div>
 <div>- Load Note / Internal Comment</div>
 <div>- Connected Panel Assignment</div>
 <div>- Unassigned Load Management</div>
-<div>- Full Load Reconstruction From Import</div>
+<div>- Full Load Reconstruction From Project Import</div>
+<div>- Load Reconstruction With New IDs During Panel Import</div>
+<div>- Connected Panel ID Remapping During Panel Import</div>
+<div>- Packaged Panel Load Reconstruction</div>
 
 <br />
 
@@ -5067,14 +6017,23 @@ const unassignedAnalyzerLoads = analyzerAssignableItems.filter(
 <div>- Packaged Panel Supply Cable Definition</div>
 <div>- Upstream Supply Panel Connection</div>
 <div>- Connected Panel Relationships</div>
-<div>- Full Panel Reconstruction From Import</div>
+<div>- Packaged Panel Supply Phase Definition</div>
+<div>- Full Panel Reconstruction From Project Import</div>
+<div>- Panel Reuse In Another Project / Building / Floor / Room</div>
+<div>- Main Panel ID Remapping During Panel Import</div>
+<div>- Packaged Panel ID Remapping During Panel Import</div>
+<div>- Packaged Panel Supply Relationship Reconstruction</div>
+<div>- Editable Project And Location Information Before Panel Import</div>
 
 <br />
 
-<div><strong>Panel Summary</strong></div>
+<div><strong>Project & Panel Summary</strong></div>
 <div>- Installed Power</div>
 <div>- Current Calculation</div>
-<div>- Load Count</div>
+<div>- Project Load Count</div>
+<div>- Packaged Panel Counted As A Single Project Load / Feeder</div>
+<div>- Packaged Panel Internal Loads Excluded From Project Load Count</div>
+<div>- Panel Outgoing Circuit Count</div>
 <div>- P / Q / S Calculation</div>
 <div>- Weighted Average Cos φ</div>
 <div>- Phase Distribution</div>
@@ -5094,16 +6053,18 @@ const unassignedAnalyzerLoads = analyzerAssignableItems.filter(
 <div>- Assigned Loads Move Under Related Analyzer</div>
 <div>- Analyzer Badge On Panel Card</div>
 <div>- Packaged Panel Feeder Assignment Support</div>
-<div>- Analyzer Reconstruction From Import</div>
+<div>- Analyzer Reconstruction From Project Import</div>
+<div>- Analyzer Reconstruction During Panel Import</div>
+<div>- Analyzer To Load ID Remapping</div>
+<div>- Analyzer To Packaged Panel Feeder ID Remapping</div>
 
 <br />
 
-<div><strong>Project Import / Export</strong></div>
+<div><strong>Excel Panel Export</strong></div>
 <div>- Professional Panel Report Export</div>
-<div>- Hidden Engineering Data Sheet</div>
-<div>- Complete Project Import</div>
-<div>- Project Reconstruction From Export</div>
 <div>- Engineering Style Header</div>
+<div>- Panel Based Excel File Naming</div>
+<div>- File Name Format: Panel Name - Panel Report.xlsx</div>
 <div>- KPI Dashboard</div>
 <div>- P / Q / S Export</div>
 <div>- Power Factor Summary Export</div>
@@ -5115,15 +6076,80 @@ const unassignedAnalyzerLoads = analyzerAssignableItems.filter(
 <div>- Cable Length Export</div>
 <div>- Cable Type Export</div>
 <div>- Load Notes Export</div>
+<div>- Engineering Load Schedule</div>
+<div>- Created / Revised Date Export</div>
 <div>- Packaged Panel Grouping</div>
 <div>- Multi-Row Packaged Panel Export</div>
 <div>- Analyzer Cell Merge</div>
 <div>- Packaged Panel Feeder Merge Logic</div>
-<div>- Engineering Load Schedule</div>
-<div>- Created / Revised Date Export</div>
+<div>- Merged Feeder Information For Packaged Panels</div>
 <div>- Cable Summary Report</div>
 <div>- Automatic Cable Section Calculation</div>
 <div>- Voltage Drop Based Cable Sizing</div>
+<div>- 3% Voltage Drop Information</div>
+
+<br />
+
+<div><strong>Currist Internal Export Data</strong></div>
+<div>- Hidden Engineering Data Sheet</div>
+<div>- Currist File Validation Marker</div>
+<div>- Export Version Information</div>
+<div>- Project Metadata Table</div>
+<div>- Structure Data Table</div>
+<div>- Panel Data Table</div>
+<div>- Load Data Table</div>
+<div>- Analyzer Data Table</div>
+<div>- Country And Building Type Storage</div>
+<div>- Packaged Panel Relationship Storage</div>
+<div>- Analyzer Connected Item Storage</div>
+
+<br />
+
+<div><strong>Project Restore</strong></div>
+<div>- Restore Entire Project From Currist Excel Export</div>
+<div>- Replace Current Project With Imported Project</div>
+<div>- Project Restore Safety Confirmation</div>
+<div>- Restore Option Availability Check</div>
+<div>- Restore Button Disabled When Full Project Data Is Missing</div>
+<div>- Country Reconstruction</div>
+<div>- Building Type Reconstruction</div>
+<div>- Structure Reconstruction</div>
+<div>- Panel Reconstruction</div>
+<div>- Load Reconstruction</div>
+<div>- Analyzer Reconstruction</div>
+<div>- Packaged Panel Reconstruction</div>
+<div>- Supply Panel Relationship Reconstruction</div>
+
+<br />
+
+<div><strong>Panel Import / Reuse Engine</strong></div>
+<div>- Import Mode Selection Popup</div>
+<div>- Import Panel Only Mode</div>
+<div>- Restore Entire Project Mode</div>
+<div>- Editable Panel Destination Popup</div>
+<div>- Source Project Details Automatically Loaded</div>
+<div>- Project Name Editing Before Import</div>
+<div>- Building Name Editing Before Import</div>
+<div>- Block Editing Before Import</div>
+<div>- Floor Editing Before Import</div>
+<div>- Room Number Editing Before Import</div>
+<div>- Room Description Editing Before Import</div>
+<div>- Country Editing Before Import</div>
+<div>- Building Type Editing Before Import</div>
+<div>- Automatic Destination Structure Creation</div>
+<div>- Existing Destination Structure Detection And Reuse</div>
+<div>- Main Panel Import</div>
+<div>- Main Panel Load Import</div>
+<div>- Packaged Panel Import</div>
+<div>- Packaged Panel Load Import</div>
+<div>- Upstream Supply Panel Mapping</div>
+<div>- Load ID Mapping</div>
+<div>- Panel ID Mapping</div>
+<div>- Analyzer ID Reconstruction</div>
+<div>- Analyzer To Load Mapping</div>
+<div>- Analyzer To Packaged Panel Feeder Mapping</div>
+<div>- Reuse The Same Panel In Different Rooms</div>
+<div>- Reuse Existing Engineering Designs In New Projects</div>
 
 <hr style={{ margin: "16px 0", borderColor: "#334155" }} />
 
@@ -5131,25 +6157,56 @@ const unassignedAnalyzerLoads = analyzerAssignableItems.filter(
 
 <div><strong>Import / Export Architecture</strong></div>
 <div>- Shared Import / Export Schema</div>
-<div>- Version Compatibility</div>
-<div>- Import Validation</div>
-<div>- Import Safety Confirmation</div>
+<div>- Centralized Column Definitions</div>
+<div>- Reduce Duplicate Export And Import Field Mapping</div>
+<div>- Import Pipeline Refactoring</div>
+<div>- Separate Data Preparation And State Commit Stages</div>
+<div>- Atomic Import Commit</div>
+<div>- Remove Temporary Import Debug Logs</div>
+<div>- Export Version Compatibility</div>
+<div>- Backward Compatibility For Older Export Files</div>
+<div>- Detailed Import Validation</div>
+<div>- Duplicate Panel Name Validation</div>
+<div>- Duplicate Project Code Validation During Panel Reuse</div>
+<div>- Improved Import Success And Error Messages</div>
 
 <br />
 
-<div><strong>Panel Technical Specification</strong></div>
-<div>- Panel Color</div>
-<div>- Seismic Requirement</div>
-<div>- Cable Entry</div>
-<div>- Cooling Method</div>
-<div>- Technical Specification Generation</div>
+<div><strong>Import / Export Testing</strong></div>
+<div>- Multiple Normal Panel Test</div>
+<div>- Multiple Packaged Panel Test</div>
+<div>- Multiple Analyzer Test</div>
+<div>- Empty Analyzer Test</div>
+<div>- Analyzer Feeder Mapping Test</div>
+<div>- Existing Destination Structure Test</div>
+<div>- New Destination Structure Test</div>
+<div>- Same Panel Imported Into Multiple Rooms Test</div>
+<div>- Old Export Version Test</div>
+<div>- Invalid / Incomplete Excel File Test</div>
+<div>- Project Restore Regression Test</div>
+<div>- Panel Reuse Regression Test</div>
 
 <br />
 
 <div><strong>Engineering Report Improvements</strong></div>
 <div>- Export Layout Refinement</div>
 <div>- Engineering Report Formatting</div>
+<div>- Header And Section Alignment</div>
+<div>- Column Width And Text Wrapping Improvements</div>
+<div>- Cable Summary Visual Refinement</div>
+<div>- Packaged Panel Row Presentation Improvements</div>
+<div>- Analyzer Presentation Improvements</div>
 <div>- Cable Sizing Validation</div>
+<div>- Final Excel Report Quality Review</div>
+
+<br />
+
+<div><strong>Panel Technical Specification</strong></div>
+<div>- Panel Color</div>
+<div>- Seismic Requirement</div>
+<div>- Cable Entry Direction</div>
+<div>- Cooling Method</div>
+<div>- Technical Specification Generation</div>
 
 <hr style={{ margin: "16px 0", borderColor: "#334155" }} />
 
@@ -5159,12 +6216,16 @@ const unassignedAnalyzerLoads = analyzerAssignableItems.filter(
 <div>- .currist Native Project File</div>
 <div>- Full Project Excel Export</div>
 <div>- PDF Export</div>
-<div>- Automatic Backup</div>
+<div>- Automatic Local Backup</div>
+<div>- Project Recovery</div>
+<div>- Import / Export Migration Between Versions</div>
 
 <br />
 
 <div><strong>Electrical Engineering</strong></div>
-<div>- Diversity / Demand / Coincidence Factors</div>
+<div>- Diversity Factor</div>
+<div>- Demand Factor</div>
+<div>- Coincidence Factor</div>
 <div>- Mutually Exclusive Loads</div>
 <div>- Compensation Calculation</div>
 <div>- Transformer Selection</div>
@@ -5175,8 +6236,12 @@ const unassignedAnalyzerLoads = analyzerAssignableItems.filter(
 
 <div><strong>Cable Engineering</strong></div>
 <div>- Cable Type Library</div>
+<div>- Cable Current Carrying Capacity Validation</div>
 <div>- Cable Schedule Report</div>
 <div>- Advanced Voltage Drop Parameters</div>
+<div>- Installation Method Definition</div>
+<div>- Ambient Temperature Correction</div>
+<div>- Grouping Correction Factors</div>
 <div>- Cable Library Expansion</div>
 
 <br />
@@ -5196,34 +6261,64 @@ const unassignedAnalyzerLoads = analyzerAssignableItems.filter(
 <br />
 
 <div><strong>Documentation</strong></div>
+<div>- PDF Panel Report</div>
 <div>- Technical Specification Generation</div>
+<div>- Panel Technical Specification</div>
 <div>- Bill Of Materials (BOM)</div>
+<div>- Cable Schedule</div>
 <div>- Supplier Ready Documentation</div>
+
+<br />
+
+<div><strong>Supplier Workflow</strong></div>
+<div>- Frozen Panel Status</div>
+<div>- Revision Comparison</div>
+<div>- Revision Tracking</div>
+<div>- Imported Panel Source Tracking</div>
+<div>- Panel Template Library</div>
 
 <br />
 
 <div><strong>User Account & Cloud</strong></div>
 <div>- User Login</div>
+<div>- User Account Management</div>
 <div>- Cloud Project Storage</div>
 <div>- Continue From Last Project</div>
 <div>- Project Synchronization</div>
+<div>- Automatic Cloud Backup</div>
+<div>- Project Sharing</div>
+<div>- Team Collaboration</div>
+
+<br />
+
+<div><strong>Commercial Product</strong></div>
+<div>- Entry / Mid / High Subscription Tiers</div>
+<div>- Import Availability For Mid And High Tiers</div>
+<div>- Subscription Management</div>
+<div>- Trial Period</div>
+<div>- License And Feature Control</div>
+<div>- Payment Integration</div>
+<div>- Production Monitoring And Error Reporting</div>
+<div>- User Documentation And Onboarding</div>
 
 <br />
 
 <div><strong>Platform</strong></div>
 <div>- Tablet Responsive Layout</div>
+<div>- iPad Compatibility</div>
 <div>- Mobile Responsive Layout</div>
+<div>- iPhone Compatibility</div>
 
 <hr style={{ margin: "16px 0", borderColor: "#334155" }} />
 
 <h3>📦 VERSION INFORMATION</h3>
 
-<div>Version: 0.8.0</div>
+<div>Version: 0.8.3</div>
 <div>Developed By: Ergin Yurttaş</div>
 <div>Contact: erginyurttas@gmail.com</div>
 
 <div style={{ marginTop: 12 }}>
-  <strong>Last Update:</strong> Jul 6, 2026
+  <strong>Last Update:</strong> Jul 12, 2026
 </div>
 
 </div>
@@ -5417,6 +6512,7 @@ const unassignedAnalyzerLoads = analyzerAssignableItems.filter(
       <div><strong>Phase:</strong> {selectedLoadDetail.phaseType}</div>
       <div><strong>Line:</strong> {selectedLoadDetail.phaseLine || "-"}</div>
       <div><strong>Character:</strong> {selectedLoadDetail.loadCharacter || "-"}</div>
+      <div><strong>Starting Method:</strong>{" "}{selectedLoadDetail.startingMethod || "-"}</div>
       <div><strong>Cos φ:</strong> {selectedLoadDetail.cosPhi ?? "-"}</div>
       <div><strong>Distance:</strong> {selectedLoadDetail.cableLengthM ?? "-"} m</div>
       <div><strong>Cable Type:</strong> {selectedLoadDetail.cableType || "-"}</div>
