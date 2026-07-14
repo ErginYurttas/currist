@@ -4,14 +4,10 @@ import ExcelJS from "exceljs";
 import { saveAs } from "file-saver";
 import { useEffect, useMemo, useState } from "react";
 import { catalog } from "./data/catalog";
-import {
-  createProjectDocument,
-  type CurristProjectDocument,
-} from "./project/project-document";
-import {
-  
-  saveProjectToLocalStorage,
-} from "./project/project-storage";
+import type { CurristProjectDocument } from "./project/project-document";
+import { ProjectManager } from "./project/project-manager";
+
+
 
 import {
   StructureType,
@@ -32,6 +28,8 @@ import {
 } from "./types";
 
 
+import type { User } from "@supabase/supabase-js";
+import { supabase } from "./lib/supabase";
 
 
 
@@ -186,6 +184,14 @@ export default function Home() {
   const [projectDocumentId, setProjectDocumentId] = useState<string | null>(null);
   const [projectCreatedAt, setProjectCreatedAt] = useState<number | null>(null);
 
+  const [authEmail, setAuthEmail] = useState("");
+  const [authPassword, setAuthPassword] = useState("");
+  const [authMode, setAuthMode] = useState<"login" | "register">("login");
+  const [authLoading, setAuthLoading] = useState(false);
+  const [authError, setAuthError] = useState("");
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [authReady, setAuthReady] = useState(false);
+
   const [name, setName] = useState("");
   const [optionalName, setOptionalName] = useState("");
   const [projectCountry, setProjectCountry] = useState("");
@@ -243,7 +249,7 @@ export default function Home() {
   const [panelCableLengthM, setPanelCableLengthM] = useState("");
   const [panelCableType, setPanelCableType] = useState<"" | CableType>("");
   const buildCurrentProjectDocument = (): CurristProjectDocument => {
-  return createProjectDocument(
+  return ProjectManager.buildProjectDocument(
     {
       projectCountry,
       buildingType,
@@ -251,12 +257,8 @@ export default function Home() {
       panels,
       loads,
     },
-    projectDocumentId && projectCreatedAt
-      ? {
-          documentId: projectDocumentId,
-          createdAt: projectCreatedAt,
-        }
-      : undefined
+    projectDocumentId,
+    projectCreatedAt
   );
 };
 
@@ -280,14 +282,90 @@ const applyProjectDocument = (
 };
 
 const saveCurrentProject = () => {
-  const project = buildCurrentProjectDocument();
+const project = buildCurrentProjectDocument();
 
-  saveProjectToLocalStorage(project);
+  ProjectManager.saveProject(project);
 
   setProjectDocumentId(project.documentId);
   setProjectCreatedAt(project.createdAt);
 
   console.log("Project saved.", project);
+};
+
+useEffect(() => {
+  const loadInitialSession = async () => {
+    const { data, error } = await supabase.auth.getSession();
+
+    if (error) {
+  console.error("Session could not be read:", error);
+  setAuthReady(true);
+  return;
+}
+
+setCurrentUser(data.session?.user ?? null);
+setAuthReady(true);
+  };
+
+  loadInitialSession();
+
+  const {
+    data: { subscription },
+  } = supabase.auth.onAuthStateChange((_event, session) => {
+    setCurrentUser(session?.user ?? null);
+  });
+
+  return () => {
+    subscription.unsubscribe();
+  };
+}, []);
+
+const handleAuthSubmit = async (
+  event: React.FormEvent<HTMLFormElement>
+) => {
+  event.preventDefault();
+
+  setAuthLoading(true);
+  setAuthError("");
+
+  try {
+    if (authMode === "register") {
+      const { error } = await supabase.auth.signUp({
+        email: authEmail.trim(),
+        password: authPassword,
+      });
+
+      if (error) {
+        setAuthError(error.message);
+        return;
+      }
+
+      window.alert(
+        "Registration successful. Check your email to confirm your account."
+      );
+
+      return;
+    }
+
+    const { error } = await supabase.auth.signInWithPassword({
+      email: authEmail.trim(),
+      password: authPassword,
+    });
+
+    if (error) {
+      setAuthError(error.message);
+    }
+  } finally {
+    setAuthLoading(false);
+  }
+};
+
+const handleLogout = async () => {
+  const { error } = await supabase.auth.signOut();
+
+  if (error) {
+    window.alert("Logout failed.");
+    console.error("Logout failed:", error);
+  }
 };
 
 useEffect(() => {
@@ -6053,7 +6131,7 @@ const unassignedAnalyzerLoads = analyzerAssignableItems.filter(
 <h3>✅ COMPLETED FEATURES</h3>
 
 <div><strong>Structure Management</strong></div>
-<div>- Project / Building / Block / Floor / Room Structure</div>
+<div>- Project / Building / Block / Floor / Room Hierarchy</div>
 <div>- Country Selection With Flag Badge</div>
 <div>- Building Type Selection With Icon</div>
 <div>- Alphabetical / Created Date Sorting</div>
@@ -6068,10 +6146,10 @@ const unassignedAnalyzerLoads = analyzerAssignableItems.filter(
 <div><strong>Load Management</strong></div>
 <div>- Create / Edit / Copy / Delete Load</div>
 <div>- Load Detail Popup</div>
-<div>- Catalog Based Loads</div>
+<div>- Catalog-Based Loads</div>
 <div>- Manual Loads</div>
 <div>- 1P / 3P Load Definition</div>
-<div>- R / S / T Line Selection</div>
+<div>- R / S / T Phase Line Selection</div>
 <div>- Load Character And Cos φ Selection</div>
 <div>- Starting Method Definition</div>
 <div>- Starting Method Display In Load Detail</div>
@@ -6108,7 +6186,7 @@ const unassignedAnalyzerLoads = analyzerAssignableItems.filter(
 <br />
 
 <div><strong>Project & Panel Summary</strong></div>
-<div>- Installed Power</div>
+<div>- Installed Power Calculation</div>
 <div>- Current Calculation</div>
 <div>- Project Load Count</div>
 <div>- Packaged Panel Counted As A Single Project Load / Feeder</div>
@@ -6142,8 +6220,8 @@ const unassignedAnalyzerLoads = analyzerAssignableItems.filter(
 
 <div><strong>Excel Panel Export</strong></div>
 <div>- Professional Panel Report Export</div>
-<div>- Engineering Style Header</div>
-<div>- Panel Based Excel File Naming</div>
+<div>- Engineering-Style Header</div>
+<div>- Panel-Based Excel File Naming</div>
 <div>- File Name Format: Panel Name - Panel Report.xlsx</div>
 <div>- KPI Dashboard</div>
 <div>- P / Q / S Export</div>
@@ -6165,12 +6243,12 @@ const unassignedAnalyzerLoads = analyzerAssignableItems.filter(
 <div>- Merged Feeder Information For Packaged Panels</div>
 <div>- Cable Summary Report</div>
 <div>- Automatic Cable Section Calculation</div>
-<div>- Voltage Drop Based Cable Sizing</div>
+<div>- Voltage Drop-Based Cable Sizing</div>
 <div>- 3% Voltage Drop Information</div>
 
 <br />
 
-<div><strong>Currist Internal Export Data</strong></div>
+<div><strong>Currist Engineering Metadata</strong></div>
 <div>- Hidden Engineering Data Sheet</div>
 <div>- Currist File Validation Marker</div>
 <div>- Export Version Information</div>
@@ -6185,7 +6263,7 @@ const unassignedAnalyzerLoads = analyzerAssignableItems.filter(
 
 <br />
 
-<div><strong>Project Restore</strong></div>
+<div><strong>Project Recovery & Restore</strong></div>
 <div>- Restore Entire Project From Currist Excel Export</div>
 <div>- Replace Current Project With Imported Project</div>
 <div>- Project Restore Safety Confirmation</div>
@@ -6202,7 +6280,7 @@ const unassignedAnalyzerLoads = analyzerAssignableItems.filter(
 
 <br />
 
-<div><strong>Panel Import / Reuse Engine</strong></div>
+<div><strong>Panel Reuse & Import Engine</strong></div>
 <div>- Import Mode Selection Popup</div>
 <div>- Import Panel Only Mode</div>
 <div>- Restore Entire Project Mode</div>
@@ -6231,9 +6309,49 @@ const unassignedAnalyzerLoads = analyzerAssignableItems.filter(
 <div>- Reuse The Same Panel In Different Rooms</div>
 <div>- Reuse Existing Engineering Designs In New Projects</div>
 
+<br />
+
+<div><strong>Authentication & User Account</strong></div>
+<div>- Supabase Authentication Integration</div>
+<div>- Secure User Registration</div>
+<div>- Email Verification</div>
+<div>- Secure Email And Password Login</div>
+<div>- Persistent User Session</div>
+<div>- Automatic Session Restoration</div>
+<div>- Authentication State Monitoring</div>
+<div>- Protected Currist Workspace</div>
+<div>- Signed-In User Information Card</div>
+<div>- User Email Display</div>
+<div>- Secure Logout</div>
+
+<br />
+
+<div><strong>Project Data Foundation</strong></div>
+<div>- Versioned Currist Project Document</div>
+<div>- Unique Project Document ID</div>
+<div>- Project Created And Updated Timestamps</div>
+<div>- Centralized Project Data Structure</div>
+<div>- Project Data Validation</div>
+<div>- Local Project Storage Foundation</div>
+<div>- Project Manager Service Foundation</div>
+<div>- Cloud-Ready Project Data Architecture</div>
+
 <hr style={{ margin: "16px 0", borderColor: "#334155" }} />
 
 <h3>🔨 CURRENT DEVELOPMENT</h3>
+
+<div><strong>Cloud Workspace</strong></div>
+<div>- Cloud Project Architecture</div>
+<div>- User Based Project Ownership</div>
+<div>- My Projects Dashboard</div>
+<div>- Cloud Save Engine</div>
+<div>- Cloud Load Engine</div>
+<div>- Project Metadata Management</div>
+<div>- Continue From Last Project</div>
+<div>- Project Open / Rename / Delete Operations</div>
+<div>- Cloud And Local Storage Abstraction</div>
+
+<br />
 
 <div><strong>Import / Export Architecture</strong></div>
 <div>- Shared Import / Export Schema</div>
@@ -6360,24 +6478,27 @@ const unassignedAnalyzerLoads = analyzerAssignableItems.filter(
 <br />
 
 <div><strong>User Account & Cloud</strong></div>
-<div>- User Login</div>
-<div>- User Account Management</div>
+<div>- User Profile Management</div>
 <div>- Cloud Project Storage</div>
+<div>- My Projects Dashboard</div>
 <div>- Continue From Last Project</div>
 <div>- Project Synchronization</div>
 <div>- Automatic Cloud Backup</div>
+<div>- Project Version History</div>
 <div>- Project Sharing</div>
 <div>- Team Collaboration</div>
+<div>- Organization / Company Workspace</div>
 
 <br />
 
 <div><strong>Commercial Product</strong></div>
-<div>- Entry / Mid / High Subscription Tiers</div>
-<div>- Import Availability For Mid And High Tiers</div>
-<div>- Subscription Management</div>
+<div>- FREE / STANDARD / PROFESSIONAL Subscription Plans</div>
+<div>- Feature Based License Control</div>
 <div>- Trial Period</div>
-<div>- License And Feature Control</div>
+<div>- Subscription Management</div>
 <div>- Payment Integration</div>
+<div>- Admin Dashboard</div>
+<div>- User Analytics</div>
 <div>- Production Monitoring And Error Reporting</div>
 <div>- User Documentation And Onboarding</div>
 
@@ -6393,12 +6514,12 @@ const unassignedAnalyzerLoads = analyzerAssignableItems.filter(
 
 <h3>📦 VERSION INFORMATION</h3>
 
-<div>Version: 0.8.3</div>
+<div>Version: 0.8.5</div>
 <div>Developed By: Ergin Yurttaş</div>
 <div>Contact: erginyurttas@gmail.com</div>
 
 <div style={{ marginTop: 12 }}>
-  <strong>Last Update:</strong> Jul 12, 2026
+  <strong>Last Update:</strong> Jul 14, 2026
 </div>
 
 </div>
@@ -6841,6 +6962,193 @@ setCopyLoadProjectCodes({});
     </div>
   </>
 )}
+
+{authReady && currentUser && (
+  <div
+    style={{
+      position: "fixed",
+      top: 16,
+      right: 16,
+      zIndex: 15000,
+      display: "flex",
+      alignItems: "center",
+      gap: 12,
+      padding: "10px 12px",
+      borderRadius: 12,
+      border: "1px solid #334155",
+      background: "#0f172a",
+      color: "white",
+      boxShadow: "0 10px 30px rgba(0, 0, 0, 0.25)",
+    }}
+  >
+    <div
+      style={{
+        width: 34,
+        height: 34,
+        borderRadius: "50%",
+        display: "grid",
+        placeItems: "center",
+        background: "#1e40af",
+        fontWeight: 700,
+      }}
+    >
+      {(currentUser.email?.[0] || "U").toUpperCase()}
+    </div>
+
+    <div style={{ lineHeight: 1.25 }}>
+      <div style={{ fontSize: 13, fontWeight: 700 }}>
+        Signed in
+      </div>
+
+      <div style={{ fontSize: 12, color: "#94a3b8" }}>
+        {currentUser.email}
+      </div>
+    </div>
+
+    <button
+      type="button"
+      onClick={handleLogout}
+      style={{
+        border: "1px solid #475569",
+        borderRadius: 8,
+        padding: "7px 10px",
+        background: "#1e293b",
+        color: "white",
+        cursor: "pointer",
+      }}
+    >
+      Log out
+    </button>
+  </div>
+)}
+
+
+{!authReady && (
+  <div
+    style={{
+      position: "fixed",
+      inset: 0,
+      display: "grid",
+      placeItems: "center",
+      background: "#020617",
+      color: "white",
+      zIndex: 20000,
+    }}
+  >
+    Checking session...
+  </div>
+)}
+
+{authReady && !currentUser && (
+  <>
+    <div
+      style={{
+        position: "fixed",
+        inset: 0,
+        background: "#020617",
+        zIndex: 20000,
+      }}
+    />
+
+    <form
+      onSubmit={handleAuthSubmit}
+      style={{
+        position: "fixed",
+        top: "50%",
+        left: "50%",
+        transform: "translate(-50%, -50%)",
+        width: "calc(100% - 48px)",
+        maxWidth: 420,
+        display: "grid",
+        gap: 14,
+        padding: 28,
+        borderRadius: 16,
+        border: "1px solid #334155",
+        background: "#0f172a",
+        color: "white",
+        zIndex: 20001,
+      }}
+    >
+      <div>
+        <h1 style={{ margin: 0, fontSize: 30 }}>Currist</h1>
+
+        <p style={{ marginBottom: 0, color: "#94a3b8" }}>
+          {authMode === "login"
+            ? "Sign in to continue."
+            : "Create your Currist account."}
+        </p>
+      </div>
+
+      <input
+        type="email"
+        placeholder="Email"
+        value={authEmail}
+        onChange={(event) => setAuthEmail(event.target.value)}
+        required
+        autoComplete="email"
+        style={fieldStyle}
+      />
+
+      <input
+        type="password"
+        placeholder="Password"
+        value={authPassword}
+        onChange={(event) => setAuthPassword(event.target.value)}
+        required
+        minLength={6}
+        autoComplete={
+          authMode === "login"
+            ? "current-password"
+            : "new-password"
+        }
+        style={fieldStyle}
+      />
+
+      {authError && (
+        <div style={{ color: "#fca5a5" }}>
+          {authError}
+        </div>
+      )}
+
+      <button
+        type="submit"
+        disabled={authLoading}
+        style={{
+          ...buttonStyle,
+          opacity: authLoading ? 0.65 : 1,
+          cursor: authLoading ? "not-allowed" : "pointer",
+        }}
+      >
+        {authLoading
+          ? "Please wait..."
+          : authMode === "login"
+            ? "Sign In"
+            : "Create Account"}
+      </button>
+
+      <button
+        type="button"
+        onClick={() => {
+          setAuthMode((currentMode) =>
+            currentMode === "login" ? "register" : "login"
+          );
+          setAuthError("");
+        }}
+        style={{
+          border: "none",
+          background: "transparent",
+          color: "#38bdf8",
+          cursor: "pointer",
+        }}
+      >
+        {authMode === "login"
+          ? "No account? Create one"
+          : "Already have an account? Sign in"}
+      </button>
+    </form>
+  </>
+)}
+
 
       </div>
     </div>
