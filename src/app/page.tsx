@@ -4,6 +4,14 @@ import ExcelJS from "exceljs";
 import { saveAs } from "file-saver";
 import { useEffect, useMemo, useState } from "react";
 import { catalog } from "./data/catalog";
+import {
+  createProjectDocument,
+  type CurristProjectDocument,
+} from "./project/project-document";
+import {
+  
+  saveProjectToLocalStorage,
+} from "./project/project-storage";
 
 import {
   StructureType,
@@ -175,6 +183,8 @@ export default function Home() {
   const [structures, setStructures] = useState<Structure[]>([]);
   const [loads, setLoads] = useState<Load[]>([]);
   const [panels, setPanels] = useState<Panel[]>([]);
+  const [projectDocumentId, setProjectDocumentId] = useState<string | null>(null);
+  const [projectCreatedAt, setProjectCreatedAt] = useState<number | null>(null);
 
   const [name, setName] = useState("");
   const [optionalName, setOptionalName] = useState("");
@@ -232,6 +242,73 @@ export default function Home() {
   const [panelSupplyPhaseLine, setPanelSupplyPhaseLine] = useState<"" | PhaseLine>("");
   const [panelCableLengthM, setPanelCableLengthM] = useState("");
   const [panelCableType, setPanelCableType] = useState<"" | CableType>("");
+  const buildCurrentProjectDocument = (): CurristProjectDocument => {
+  return createProjectDocument(
+    {
+      projectCountry,
+      buildingType,
+      structures,
+      panels,
+      loads,
+    },
+    projectDocumentId && projectCreatedAt
+      ? {
+          documentId: projectDocumentId,
+          createdAt: projectCreatedAt,
+        }
+      : undefined
+  );
+};
+
+const applyProjectDocument = (
+  document: CurristProjectDocument
+) => {
+  setProjectDocumentId(document.documentId);
+  setProjectCreatedAt(document.createdAt);
+
+  setProjectCountry(document.projectCountry);
+  setBuildingType(document.buildingType);
+
+  setStructures(document.structures);
+  setPanels(document.panels);
+  setLoads(document.loads);
+
+  setSelectedParent(null);
+  setSelectedLoadDetail(null);
+  setSelectedPanelDetail(null);
+  setEditingId(null);
+};
+
+const saveCurrentProject = () => {
+  const project = buildCurrentProjectDocument();
+
+  saveProjectToLocalStorage(project);
+
+  setProjectDocumentId(project.documentId);
+  setProjectCreatedAt(project.createdAt);
+
+  console.log("Project saved.", project);
+};
+
+useEffect(() => {
+  // İlk yüklemede boş state'i kaydetme.
+  if (
+    structures.length === 0 &&
+    panels.length === 0 &&
+    loads.length === 0
+  ) {
+    return;
+  }
+
+  saveCurrentProject();
+}, [
+  structures,
+  panels,
+  loads,
+  projectCountry,
+  buildingType,
+]);
+
   const getAvailableIpRatings = () => {if (panelEnvironment === "Outdoor") {return ["IP54", "IP65", "IP66"];
   }
 
@@ -254,6 +331,7 @@ useEffect(() => {
   const [copyPanelName, setCopyPanelName] = useState("");
   const [copyLoadProjectCodes, setCopyLoadProjectCodes] = useState<Record<number, string>>({});
   const [expandedPanels, setExpandedPanels] = useState<Record<number, boolean>>({});
+  
   const [analyzerName, setAnalyzerName] = useState("");
   const [selectedAnalyzerPanelId, setSelectedAnalyzerPanelId] = useState<number | null>(null);
 
@@ -399,6 +477,8 @@ const isPackagedPanel = panelType === "Packaged Panel";
   if (selectedParent !== null) {
     setCollapsedIds((prev) => prev.filter((id) => id !== selectedParent));
   }
+
+  
 };
 
   const handleEditSelected = () => {
