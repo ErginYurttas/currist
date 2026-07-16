@@ -5,7 +5,10 @@ import { saveAs } from "file-saver";
 import { useEffect, useMemo, useState } from "react";
 import { catalog } from "./data/catalog";
 import type { CurristProjectDocument } from "./project/project-document";
-import { ProjectManager } from "./project/project-manager";
+import {
+  ProjectManager,
+  type CloudProjectSummary,
+} from "./project/project-manager";
 
 
 
@@ -30,7 +33,10 @@ import {
 
 import type { User } from "@supabase/supabase-js";
 import { supabase } from "./lib/supabase";
-
+import {
+  getCurrentUserProfile,
+  type UserProfile,
+} from "./lib/profile";
 
 
 
@@ -191,6 +197,23 @@ export default function Home() {
   const [authError, setAuthError] = useState("");
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [authReady, setAuthReady] = useState(false);
+  const [userProfile, setUserProfile] =
+  useState<UserProfile | null>(null);
+
+  const [userProfileLoading, setUserProfileLoading] =
+  useState(false);
+  const [myProjectsOpen, setMyProjectsOpen] = useState(false);
+  const [cloudProjects, setCloudProjects] = useState<CloudProjectSummary[]>([]);
+  const [cloudProjectsLoading, setCloudProjectsLoading] = useState(false);
+  const [cloudProjectsError, setCloudProjectsError] = useState("");
+
+  const [lastOpenedProjectId, setLastOpenedProjectId] = useState<string | null>(
+  null
+);
+
+  const [renamingProjectId, setRenamingProjectId] = useState<string | null>(null);
+  const [renameProjectName, setRenameProjectName] = useState("");
+  const [renameProjectLoading, setRenameProjectLoading] = useState(false);
 
   const [name, setName] = useState("");
   const [optionalName, setOptionalName] = useState("");
@@ -281,15 +304,225 @@ const applyProjectDocument = (
   setEditingId(null);
 };
 
-const saveCurrentProject = () => {
-const project = buildCurrentProjectDocument();
+const saveCurrentProject = async () => {
+  const project = buildCurrentProjectDocument();
+
+  if (!projectDocumentId) {
+    setProjectDocumentId(project.documentId);
+  }
+
+  if (!projectCreatedAt) {
+    setProjectCreatedAt(project.createdAt);
+  }
 
   ProjectManager.saveProject(project);
 
-  setProjectDocumentId(project.documentId);
-  setProjectCreatedAt(project.createdAt);
+  if (currentUser) {
+    try {
+      await ProjectManager.saveProjectToCloud(
+        project,
+        currentUser.id
+      );
 
-  console.log("Project saved.", project);
+      console.log("✅ Project saved to cloud.", project);
+    } catch (error) {
+      console.error(
+        "Cloud project save failed.",
+        error
+      );
+    }
+  }
+
+  console.log("Project saved locally.", project);
+};
+
+const loadCloudProjects = async () => {
+  if (!currentUser) return;
+
+  try {
+    setCloudProjectsLoading(true);
+    setCloudProjectsError("");
+
+    const projects =
+      await ProjectManager.getCloudProjects();
+
+    setCloudProjects(projects);
+  } catch (error) {
+    console.error(error);
+    setCloudProjectsError(
+      "Unable to load your projects."
+    );
+  } finally {
+    setCloudProjectsLoading(false);
+  }
+};
+
+const handleOpenCloudProject = async (
+  projectId: string
+) => {
+  try {
+    setCloudProjectsError("");
+
+    const project =
+      await ProjectManager.getCloudProject(projectId);
+
+    applyProjectDocument(project);
+
+    setLastOpenedProjectId(projectId);
+    localStorage.setItem(
+    `currist:lastOpenedProjectId:${currentUser?.id}`,
+    projectId
+    );
+    ProjectManager.saveProject(project);
+
+    setMyProjectsOpen(false);
+
+    console.log("✅ Cloud project opened.", project);
+  } catch (error) {
+    console.error("Cloud project open failed.", error);
+    setCloudProjectsError(
+      "The selected project could not be opened."
+    );
+  }
+};
+
+useEffect(() => {
+  if (!authReady || !currentUser) return;
+
+  const restoreLastOpenedProject = async () => {
+    const storageKey =
+      `currist:lastOpenedProjectId:${currentUser.id}`;
+
+    const savedProjectId =
+      localStorage.getItem(storageKey);
+
+    if (!savedProjectId) return;
+
+    try {
+      const project =
+        await ProjectManager.getCloudProject(savedProjectId);
+
+      applyProjectDocument(project);
+      ProjectManager.saveProject(project);
+
+      setLastOpenedProjectId(savedProjectId);
+
+      console.log(
+        "✅ Last opened project restored.",
+        project
+      );
+    } catch (error) {
+      console.error(
+        "Last opened project could not be restored.",
+        error
+      );
+
+      localStorage.removeItem(storageKey);
+    }
+  };
+
+  void restoreLastOpenedProject();
+}, [authReady, currentUser]);
+
+const handleRenameCloudProject = async () => {
+  if (!renamingProjectId) return;
+
+  const normalizedName = renameProjectName.trim();
+
+  if (!normalizedName) {
+    setCloudProjectsError(
+      "Project name cannot be empty."
+    );
+    return;
+  }
+
+  try {
+    setRenameProjectLoading(true);
+    setCloudProjectsError("");
+
+    const renamedProject =
+      await ProjectManager.renameCloudProject(
+        renamingProjectId,
+        normalizedName
+      );
+
+    setCloudProjects((projects) =>
+      projects.map((project) =>
+        project.id === renamingProjectId
+          ? {
+              ...project,
+              name: normalizedName,
+              updatedAt: new Date(
+                renamedProject.updatedAt
+              ).toISOString(),
+            }
+          : project
+      )
+    );
+
+    if (projectDocumentId === renamingProjectId) {
+      applyProjectDocument(renamedProject);
+      ProjectManager.saveProject(renamedProject);
+    }
+
+    setRenamingProjectId(null);
+    setRenameProjectName("");
+  } catch (error) {
+    console.error(
+      "Cloud project rename failed.",
+      error
+    );
+
+    setCloudProjectsError(
+      "The project could not be renamed."
+    );
+  } finally {
+    setRenameProjectLoading(false);
+  }
+};
+
+const handleDeleteCloudProject = async (
+  projectId: string,
+  projectName: string
+) => {
+  const confirmed = window.confirm(
+    `"${projectName}" project will be permanently deleted. Continue?`
+  );
+
+  if (!confirmed) return;
+
+  try {
+    setCloudProjectsError("");
+
+    await ProjectManager.deleteCloudProject(projectId);
+
+    setCloudProjects((projects) =>
+      projects.filter((project) => project.id !== projectId)
+    );
+
+    if (projectDocumentId === projectId) {
+      setProjectDocumentId(null);
+      setProjectCreatedAt(null);
+      setProjectCountry("");
+      setBuildingType("");
+      setStructures([]);
+      setPanels([]);
+      setLoads([]);
+      setSelectedParent(null);
+      setSelectedLoadDetail(null);
+      setSelectedPanelDetail(null);
+      setEditingId(null);
+    }
+  } catch (error) {
+    console.error(
+      "Cloud project delete failed.",
+      error
+    );
+
+    setCloudProjectsError(
+      "The project could not be deleted."
+    );
+  }
 };
 
 useEffect(() => {
@@ -318,6 +551,34 @@ setAuthReady(true);
     subscription.unsubscribe();
   };
 }, []);
+
+useEffect(() => {
+  if (!authReady || !currentUser) {
+    setUserProfile(null);
+    return;
+  }
+
+  const loadUserProfile = async () => {
+    try {
+      setUserProfileLoading(true);
+
+      const profile = await getCurrentUserProfile();
+
+      setUserProfile(profile);
+    } catch (error) {
+      console.error(
+        "User profile could not be loaded.",
+        error
+      );
+
+      setUserProfile(null);
+    } finally {
+      setUserProfileLoading(false);
+    }
+  };
+
+  void loadUserProfile();
+}, [authReady, currentUser]);
 
 const handleAuthSubmit = async (
   event: React.FormEvent<HTMLFormElement>
@@ -5745,6 +6006,49 @@ const unassignedAnalyzerLoads = analyzerAssignableItems.filter(
   />
 
   <button
+    type="button"
+    onClick={async () => {
+      if (!currentUser) {
+        window.alert("Please sign in before saving a project.");
+        return;
+      }
+
+      try {
+        await saveCurrentProject();
+        window.alert("Project saved successfully.");
+      } catch (error) {
+        console.error("Project save failed:", error);
+        window.alert("Project could not be saved.");
+      }
+    }}
+    style={{
+      ...buttonStyle,
+      background: "#22c55e",
+      color: "#052e16",
+      cursor: "pointer",
+    }}
+  >
+    Save Project
+  </button>
+
+<button
+  type="button"
+  onClick={async () => {
+    setMyProjectsOpen(true);
+    await loadCloudProjects();
+  }}
+  style={{
+    ...buttonStyle,
+    background: "#38bdf8",
+    color: "#082f49",
+    cursor: "pointer",
+  }}
+>
+  My Projects
+</button>
+
+  <button
+    type="button"
     onClick={() => {
       document.getElementById("currist-import-input")?.click();
     }}
@@ -6322,7 +6626,44 @@ const unassignedAnalyzerLoads = analyzerAssignableItems.filter(
 <div>- Protected Currist Workspace</div>
 <div>- Signed-In User Information Card</div>
 <div>- User Email Display</div>
+<div>- User Profile Data Foundation</div>
+<div>- User Role Management Foundation</div>
 <div>- Secure Logout</div>
+
+<br />
+
+<div><strong>User Profile & Plan Foundation</strong></div>
+<div>- Supabase Profiles Table</div>
+<div>- Automatic Profile Creation For New Users</div>
+<div>- Existing User Profile Migration</div>
+<div>- Basic / Standard / Advanced Plan Model</div>
+<div>- Subscription Status Foundation</div>
+<div>- User Role Foundation</div>
+<div>- Trial End Date Foundation</div>
+<div>- Last Seen Activity Foundation</div>
+<div>- Profile Row Level Security</div>
+<div>- Current User Profile Loading</div>
+<div>- Active Plan Badge In User Card</div>
+
+<br />
+
+<div><strong>Cloud Project Management</strong></div>
+<div>- Supabase Projects Table</div>
+<div>- User-Based Project Ownership</div>
+<div>- Project Row Level Security</div>
+<div>- Secure Cloud Project Save</div>
+<div>- Local And Cloud Project Save Support</div>
+<div>- My Projects Dashboard</div>
+<div>- User-Specific Project Listing</div>
+<div>- Project Sorting By Last Update</div>
+<div>- Open Project From Cloud</div>
+<div>- Rename Cloud Project</div>
+<div>- Project Name Synchronization With Export Data</div>
+<div>- Delete Cloud Project With Confirmation</div>
+<div>- Continue From Last Project</div>
+<div>- User-Specific Last Project Tracking</div>
+<div>- Automatic Last Project Restoration After Login</div>
+<div>- Cloud Project Persistence After Logout And Refresh</div>
 
 <br />
 
@@ -6335,80 +6676,295 @@ const unassignedAnalyzerLoads = analyzerAssignableItems.filter(
 <div>- Local Project Storage Foundation</div>
 <div>- Project Manager Service Foundation</div>
 <div>- Cloud-Ready Project Data Architecture</div>
+<div>- Cloud Project Summary Model</div>
+<div>- Cloud Project Load / Save Service</div>
+<div>- Cloud Project Rename / Delete Service</div>
+
+<br />
+
+<div><strong>Production & Deployment</strong></div>
+<div>- Vercel Production Deployment</div>
+<div>- Custom Domain Integration</div>
+<div>- Production Supabase Environment Configuration</div>
+<div>- Secure Environment Variable Management</div>
+<div>- Live Authentication On www.currist.com</div>
+<div>- Live Cloud Project Management On www.currist.com</div>
 
 <hr style={{ margin: "16px 0", borderColor: "#334155" }} />
 
-<h3>🔨 CURRENT DEVELOPMENT</h3>
+<h3>✅ COMPLETED FEATURES</h3>
 
-<div><strong>Cloud Workspace</strong></div>
-<div>- Cloud Project Architecture</div>
-<div>- User Based Project Ownership</div>
+<div><strong>Structure Management</strong></div>
+<div>- Project / Building / Block / Floor / Room Hierarchy</div>
+<div>- Country Selection With Flag Badge</div>
+<div>- Building Type Selection With Icon</div>
+<div>- Alphabetical / Created Date Sorting</div>
+<div>- Create / Edit / Delete Structure Nodes</div>
+<div>- Full Structure Reconstruction From Project Import</div>
+<div>- Automatic Destination Structure Creation For Panel Import</div>
+<div>- Existing Structure Reuse During Panel Import</div>
+<div>- Editable Panel Import Destination</div>
+
+<br />
+
+<div><strong>Load Management</strong></div>
+<div>- Create / Edit / Copy / Delete Load</div>
+<div>- Load Detail Popup</div>
+<div>- Catalog-Based Loads</div>
+<div>- Manual Loads</div>
+<div>- 1P / 3P Load Definition</div>
+<div>- R / S / T Phase Line Selection</div>
+<div>- Load Character And Cos φ Selection</div>
+<div>- Starting Method Definition</div>
+<div>- Starting Method Display In Load Detail</div>
+<div>- Cable Length Entry</div>
+<div>- Cable Type Definition</div>
+<div>- Load Note / Internal Comment</div>
+<div>- Connected Panel Assignment</div>
+<div>- Unassigned Load Management</div>
+<div>- Full Load Reconstruction From Project Import</div>
+<div>- Load Reconstruction With New IDs During Panel Import</div>
+<div>- Connected Panel ID Remapping During Panel Import</div>
+<div>- Packaged Panel Load Reconstruction</div>
+
+<br />
+
+<div><strong>Panel Management</strong></div>
+<div>- Create / Edit / Copy / Delete Panel</div>
+<div>- Copy Panel With Connected Loads</div>
+<div>- Panel Detail Popup</div>
+<div>- Panel Environment And IP Rating</div>
+<div>- Packaged Panel Logic</div>
+<div>- Packaged Panel Feeders</div>
+<div>- Packaged Panel Supply Cable Definition</div>
+<div>- Upstream Supply Panel Connection</div>
+<div>- Connected Panel Relationships</div>
+<div>- Packaged Panel Supply Phase Definition</div>
+<div>- Full Panel Reconstruction From Project Import</div>
+<div>- Panel Reuse In Another Project / Building / Floor / Room</div>
+<div>- Main Panel ID Remapping During Panel Import</div>
+<div>- Packaged Panel ID Remapping During Panel Import</div>
+<div>- Packaged Panel Supply Relationship Reconstruction</div>
+<div>- Editable Project And Location Information Before Panel Import</div>
+
+<br />
+
+<div><strong>Project & Panel Summary</strong></div>
+<div>- Installed Power Calculation</div>
+<div>- Current Calculation</div>
+<div>- Project Load Count</div>
+<div>- Packaged Panel Counted As A Single Project Load / Feeder</div>
+<div>- Packaged Panel Internal Loads Excluded From Project Load Count</div>
+<div>- Panel Outgoing Circuit Count</div>
+<div>- P / Q / S Calculation</div>
+<div>- Weighted Average Cos φ</div>
+<div>- Phase Distribution</div>
+<div>- Phase Balance Analysis</div>
+<div>- Balance Status (Excellent / Good / Attention / Critical)</div>
+<div>- Power Factor Summary</div>
+<div>- Phase Angle (φ) Calculation</div>
+<div>- Power Factor Type Classification (Inductive / Capacitive / Ohmic)</div>
+
+<br />
+
+<div><strong>Energy Analyzer / Meter</strong></div>
+<div>- Multiple Analyzers Per Panel</div>
+<div>- Assign Loads To Analyzer</div>
+<div>- Each Load Can Belong To Only One Analyzer</div>
+<div>- Common Unassigned Loads List</div>
+<div>- Assigned Loads Move Under Related Analyzer</div>
+<div>- Analyzer Badge On Panel Card</div>
+<div>- Packaged Panel Feeder Assignment Support</div>
+<div>- Analyzer Reconstruction From Project Import</div>
+<div>- Analyzer Reconstruction During Panel Import</div>
+<div>- Analyzer To Load ID Remapping</div>
+<div>- Analyzer To Packaged Panel Feeder ID Remapping</div>
+
+<br />
+
+<div><strong>Excel Panel Export</strong></div>
+<div>- Professional Panel Report Export</div>
+<div>- Engineering-Style Header</div>
+<div>- Panel-Based Excel File Naming</div>
+<div>- File Name Format: Panel Name - Panel Report.xlsx</div>
+<div>- KPI Dashboard</div>
+<div>- P / Q / S Export</div>
+<div>- Power Factor Summary Export</div>
+<div>- Phase Distribution Export</div>
+<div>- Phase Balance Analysis Export</div>
+<div>- Analyzer Information Export</div>
+<div>- Connected Panel Export</div>
+<div>- Starting Method Export</div>
+<div>- Cable Length Export</div>
+<div>- Cable Type Export</div>
+<div>- Load Notes Export</div>
+<div>- Engineering Load Schedule</div>
+<div>- Created / Revised Date Export</div>
+<div>- Packaged Panel Grouping</div>
+<div>- Multi-Row Packaged Panel Export</div>
+<div>- Analyzer Cell Merge</div>
+<div>- Packaged Panel Feeder Merge Logic</div>
+<div>- Merged Feeder Information For Packaged Panels</div>
+<div>- Cable Summary Report</div>
+<div>- Automatic Cable Section Calculation</div>
+<div>- Voltage Drop-Based Cable Sizing</div>
+<div>- 3% Voltage Drop Information</div>
+
+<br />
+
+<div><strong>Currist Engineering Metadata</strong></div>
+<div>- Hidden Engineering Data Sheet</div>
+<div>- Currist File Validation Marker</div>
+<div>- Export Version Information</div>
+<div>- Project Metadata Table</div>
+<div>- Structure Data Table</div>
+<div>- Panel Data Table</div>
+<div>- Load Data Table</div>
+<div>- Analyzer Data Table</div>
+<div>- Country And Building Type Storage</div>
+<div>- Packaged Panel Relationship Storage</div>
+<div>- Analyzer Connected Item Storage</div>
+
+<br />
+
+<div><strong>Project Recovery & Restore</strong></div>
+<div>- Restore Entire Project From Currist Excel Export</div>
+<div>- Replace Current Project With Imported Project</div>
+<div>- Project Restore Safety Confirmation</div>
+<div>- Restore Option Availability Check</div>
+<div>- Restore Button Disabled When Full Project Data Is Missing</div>
+<div>- Country Reconstruction</div>
+<div>- Building Type Reconstruction</div>
+<div>- Structure Reconstruction</div>
+<div>- Panel Reconstruction</div>
+<div>- Load Reconstruction</div>
+<div>- Analyzer Reconstruction</div>
+<div>- Packaged Panel Reconstruction</div>
+<div>- Supply Panel Relationship Reconstruction</div>
+
+<br />
+
+<div><strong>Panel Reuse & Import Engine</strong></div>
+<div>- Import Mode Selection Popup</div>
+<div>- Import Panel Only Mode</div>
+<div>- Restore Entire Project Mode</div>
+<div>- Editable Panel Destination Popup</div>
+<div>- Source Project Details Automatically Loaded</div>
+<div>- Project Name Editing Before Import</div>
+<div>- Building Name Editing Before Import</div>
+<div>- Block Editing Before Import</div>
+<div>- Floor Editing Before Import</div>
+<div>- Room Number Editing Before Import</div>
+<div>- Room Description Editing Before Import</div>
+<div>- Country Editing Before Import</div>
+<div>- Building Type Editing Before Import</div>
+<div>- Automatic Destination Structure Creation</div>
+<div>- Existing Destination Structure Detection And Reuse</div>
+<div>- Main Panel Import</div>
+<div>- Main Panel Load Import</div>
+<div>- Packaged Panel Import</div>
+<div>- Packaged Panel Load Import</div>
+<div>- Upstream Supply Panel Mapping</div>
+<div>- Load ID Mapping</div>
+<div>- Panel ID Mapping</div>
+<div>- Analyzer ID Reconstruction</div>
+<div>- Analyzer To Load Mapping</div>
+<div>- Analyzer To Packaged Panel Feeder Mapping</div>
+<div>- Reuse The Same Panel In Different Rooms</div>
+<div>- Reuse Existing Engineering Designs In New Projects</div>
+
+<br />
+
+<div><strong>Authentication & User Account</strong></div>
+<div>- Supabase Authentication Integration</div>
+<div>- Secure User Registration</div>
+<div>- Email Verification</div>
+<div>- Secure Email And Password Login</div>
+<div>- Persistent User Session</div>
+<div>- Automatic Session Restoration</div>
+<div>- Authentication State Monitoring</div>
+<div>- Protected Currist Workspace</div>
+<div>- Signed-In User Information Card</div>
+<div>- User Email Display</div>
+<div>- User Profile Data Foundation</div>
+<div>- User Role Management Foundation</div>
+<div>- Secure Logout</div>
+
+<br />
+
+<div><strong>User Profile & Plan Foundation</strong></div>
+<div>- Supabase Profiles Table</div>
+<div>- Automatic Profile Creation For New Users</div>
+<div>- Existing User Profile Migration</div>
+<div>- Basic / Standard / Advanced Plan Model</div>
+<div>- Subscription Status Foundation</div>
+<div>- User Role Foundation</div>
+<div>- Trial End Date Foundation</div>
+<div>- Last Seen Activity Foundation</div>
+<div>- Profile Row Level Security</div>
+<div>- Current User Profile Loading</div>
+<div>- Active Plan Badge In User Card</div>
+
+<br />
+
+<div><strong>Cloud Project Management</strong></div>
+<div>- Supabase Projects Table</div>
+<div>- User-Based Project Ownership</div>
+<div>- Project Row Level Security</div>
+<div>- Secure Cloud Project Save</div>
+<div>- Local And Cloud Project Save Support</div>
 <div>- My Projects Dashboard</div>
-<div>- Cloud Save Engine</div>
-<div>- Cloud Load Engine</div>
-<div>- Project Metadata Management</div>
+<div>- User-Specific Project Listing</div>
+<div>- Project Sorting By Last Update</div>
+<div>- Open Project From Cloud</div>
+<div>- Rename Cloud Project</div>
+<div>- Project Name Synchronization With Export Data</div>
+<div>- Delete Cloud Project With Confirmation</div>
 <div>- Continue From Last Project</div>
-<div>- Project Open / Rename / Delete Operations</div>
-<div>- Cloud And Local Storage Abstraction</div>
+<div>- User-Specific Last Project Tracking</div>
+<div>- Automatic Last Project Restoration After Login</div>
+<div>- Cloud Project Persistence After Logout And Refresh</div>
 
 <br />
 
-<div><strong>Import / Export Architecture</strong></div>
-<div>- Shared Import / Export Schema</div>
-<div>- Centralized Column Definitions</div>
-<div>- Reduce Duplicate Export And Import Field Mapping</div>
-<div>- Import Pipeline Refactoring</div>
-<div>- Separate Data Preparation And State Commit Stages</div>
-<div>- Atomic Import Commit</div>
-<div>- Remove Temporary Import Debug Logs</div>
-<div>- Export Version Compatibility</div>
-<div>- Backward Compatibility For Older Export Files</div>
-<div>- Detailed Import Validation</div>
-<div>- Duplicate Panel Name Validation</div>
-<div>- Duplicate Project Code Validation During Panel Reuse</div>
-<div>- Improved Import Success And Error Messages</div>
+<div><strong>Project Data Foundation</strong></div>
+<div>- Versioned Currist Project Document</div>
+<div>- Unique Project Document ID</div>
+<div>- Project Created And Updated Timestamps</div>
+<div>- Centralized Project Data Structure</div>
+<div>- Project Data Validation</div>
+<div>- Local Project Storage Foundation</div>
+<div>- Project Manager Service Foundation</div>
+<div>- Cloud-Ready Project Data Architecture</div>
+<div>- Cloud Project Summary Model</div>
+<div>- Cloud Project Load / Save Service</div>
+<div>- Cloud Project Rename / Delete Service</div>
 
 <br />
 
-<div><strong>Import / Export Testing</strong></div>
-<div>- Multiple Normal Panel Test</div>
-<div>- Multiple Packaged Panel Test</div>
-<div>- Multiple Analyzer Test</div>
-<div>- Empty Analyzer Test</div>
-<div>- Analyzer Feeder Mapping Test</div>
-<div>- Existing Destination Structure Test</div>
-<div>- New Destination Structure Test</div>
-<div>- Same Panel Imported Into Multiple Rooms Test</div>
-<div>- Old Export Version Test</div>
-<div>- Invalid / Incomplete Excel File Test</div>
-<div>- Project Restore Regression Test</div>
-<div>- Panel Reuse Regression Test</div>
-
-<br />
-
-<div><strong>Engineering Report Improvements</strong></div>
-<div>- Export Layout Refinement</div>
-<div>- Engineering Report Formatting</div>
-<div>- Header And Section Alignment</div>
-<div>- Column Width And Text Wrapping Improvements</div>
-<div>- Cable Summary Visual Refinement</div>
-<div>- Packaged Panel Row Presentation Improvements</div>
-<div>- Analyzer Presentation Improvements</div>
-<div>- Cable Sizing Validation</div>
-<div>- Final Excel Report Quality Review</div>
-
-<br />
-
-<div><strong>Panel Technical Specification</strong></div>
-<div>- Panel Color</div>
-<div>- Seismic Requirement</div>
-<div>- Cable Entry Direction</div>
-<div>- Cooling Method</div>
-<div>- Technical Specification Generation</div>
+<div><strong>Production & Deployment</strong></div>
+<div>- Vercel Production Deployment</div>
+<div>- Custom Domain Integration</div>
+<div>- Production Supabase Environment Configuration</div>
+<div>- Secure Environment Variable Management</div>
+<div>- Live Authentication On www.currist.com</div>
+<div>- Live Cloud Project Management On www.currist.com</div>
 
 <hr style={{ margin: "16px 0", borderColor: "#334155" }} />
 
 <h3>🎯 ROADMAP</h3>
+
+<div><strong>Public Website & Onboarding</strong></div>
+<div>- Public Landing Page Before Login</div>
+<div>- Product Feature Overview</div>
+<div>- Basic / Standard / Advanced Plan Comparison</div>
+<div>- Explore Features Without Creating An Account</div>
+<div>- View Plans Before Registration</div>
+<div>- Sign In / Create Account Entry Points</div>
+<div>- Guided First Project Creation</div>
+<div>- New User Onboarding Flow</div>
+
+<br />
 
 <div><strong>Project File System</strong></div>
 <div>- .currist Native Project File</div>
@@ -6417,109 +6973,16 @@ const unassignedAnalyzerLoads = analyzerAssignableItems.filter(
 <div>- Automatic Local Backup</div>
 <div>- Project Recovery</div>
 <div>- Import / Export Migration Between Versions</div>
-
-<br />
-
-<div><strong>Electrical Engineering</strong></div>
-<div>- Diversity Factor</div>
-<div>- Demand Factor</div>
-<div>- Coincidence Factor</div>
-<div>- Mutually Exclusive Loads</div>
-<div>- Compensation Calculation</div>
-<div>- Transformer Selection</div>
-<div>- Generator Selection</div>
-<div>- UPS Selection</div>
-
-<br />
-
-<div><strong>Cable Engineering</strong></div>
-<div>- Cable Type Library</div>
-<div>- Cable Current Carrying Capacity Validation</div>
-<div>- Cable Schedule Report</div>
-<div>- Advanced Voltage Drop Parameters</div>
-<div>- Installation Method Definition</div>
-<div>- Ambient Temperature Correction</div>
-<div>- Grouping Correction Factors</div>
-<div>- Cable Library Expansion</div>
-
-<br />
-
-<div><strong>Panel Engineering</strong></div>
-<div>- Panel Dimension Calculation</div>
-<div>- Main Switch Selection</div>
-<div>- Feeder Breaker Selection</div>
-<div>- Contactor Selection</div>
-<div>- MPCB Selection</div>
-<div>- Starter Selection</div>
-<div>- Soft Starter Selection</div>
-<div>- VFD Selection</div>
-<div>- Motor Protection Selection</div>
-<div>- Control Components Selection</div>
-
-<br />
-
-<div><strong>Documentation</strong></div>
-<div>- PDF Panel Report</div>
-<div>- Technical Specification Generation</div>
-<div>- Panel Technical Specification</div>
-<div>- Bill Of Materials (BOM)</div>
-<div>- Cable Schedule</div>
-<div>- Supplier Ready Documentation</div>
-
-<br />
-
-<div><strong>Supplier Workflow</strong></div>
-<div>- Frozen Panel Status</div>
-<div>- Revision Comparison</div>
-<div>- Revision Tracking</div>
-<div>- Imported Panel Source Tracking</div>
-<div>- Panel Template Library</div>
-
-<br />
-
-<div><strong>User Account & Cloud</strong></div>
-<div>- User Profile Management</div>
-<div>- Cloud Project Storage</div>
-<div>- My Projects Dashboard</div>
-<div>- Continue From Last Project</div>
-<div>- Project Synchronization</div>
-<div>- Automatic Cloud Backup</div>
-<div>- Project Version History</div>
-<div>- Project Sharing</div>
-<div>- Team Collaboration</div>
-<div>- Organization / Company Workspace</div>
-
-<br />
-
-<div><strong>Commercial Product</strong></div>
-<div>- FREE / STANDARD / PROFESSIONAL Subscription Plans</div>
-<div>- Feature Based License Control</div>
-<div>- Trial Period</div>
-<div>- Subscription Management</div>
-<div>- Payment Integration</div>
-<div>- Admin Dashboard</div>
-<div>- User Analytics</div>
-<div>- Production Monitoring And Error Reporting</div>
-<div>- User Documentation And Onboarding</div>
-
-<br />
-
-<div><strong>Platform</strong></div>
-<div>- Tablet Responsive Layout</div>
-<div>- iPad Compatibility</div>
-<div>- Mobile Responsive Layout</div>
-<div>- iPhone Compatibility</div>
-
-<hr style={{ margin: "16px 0", borderColor: "#334155" }} />
+<div>- Project Duplicate Function</div>
 
 <h3>📦 VERSION INFORMATION</h3>
 
-<div>Version: 0.8.5</div>
+<div>Version: 0.8.9</div>
 <div>Developed By: Ergin Yurttaş</div>
 <div>Contact: erginyurttas@gmail.com</div>
 
 <div style={{ marginTop: 12 }}>
-  <strong>Last Update:</strong> Jul 14, 2026
+  <strong>Last Update:</strong> Jul 16, 2026
 </div>
 
 </div>
@@ -6963,6 +7426,301 @@ setCopyLoadProjectCodes({});
   </>
 )}
 
+{myProjectsOpen && currentUser && (
+  <>
+    <div
+      onClick={() => setMyProjectsOpen(false)}
+      style={{
+        position: "fixed",
+        inset: 0,
+        background: "rgba(2, 6, 23, 0.72)",
+        zIndex: 16000,
+      }}
+    />
+
+    <div
+      style={{
+        position: "fixed",
+        top: "50%",
+        left: "50%",
+        transform: "translate(-50%, -50%)",
+        width: 620,
+        maxWidth: "calc(100vw - 40px)",
+        maxHeight: "calc(100vh - 80px)",
+        overflowY: "auto",
+        padding: 24,
+        borderRadius: 18,
+        border: "1px solid #334155",
+        background: "#0f172a",
+        color: "white",
+        boxShadow: "0 25px 70px rgba(0, 0, 0, 0.5)",
+        zIndex: 16001,
+      }}
+    >
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 16,
+          marginBottom: 20,
+        }}
+      >
+        <div>
+          <h2 style={{ margin: 0 }}>My Projects</h2>
+
+          <div
+            style={{
+              marginTop: 4,
+              fontSize: 13,
+              color: "#94a3b8",
+            }}
+          >
+            {currentUser.email}
+          </div>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => setMyProjectsOpen(false)}
+          style={{
+            border: "1px solid #475569",
+            borderRadius: 8,
+            padding: "7px 11px",
+            background: "#1e293b",
+            color: "white",
+            cursor: "pointer",
+          }}
+        >
+          Close
+        </button>
+      </div>
+
+      {cloudProjectsLoading && (
+        <div style={{ color: "#94a3b8" }}>
+          Loading projects...
+        </div>
+      )}
+
+      {!cloudProjectsLoading && cloudProjectsError && (
+        <div style={{ color: "#fca5a5" }}>
+          {cloudProjectsError}
+        </div>
+      )}
+
+      {!cloudProjectsLoading &&
+        !cloudProjectsError &&
+        cloudProjects.length === 0 && (
+          <div
+            style={{
+              padding: 20,
+              borderRadius: 12,
+              border: "1px dashed #475569",
+              color: "#94a3b8",
+              textAlign: "center",
+            }}
+          >
+            No saved projects found.
+          </div>
+        )}
+
+      {!cloudProjectsLoading &&
+        !cloudProjectsError &&
+        cloudProjects.length > 0 && (
+          <div style={{ display: "grid", gap: 10 }}>
+            {cloudProjects.map((project) => (
+              <div
+                key={project.id}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: 16,
+                  padding: 14,
+                  borderRadius: 12,
+                  border: "1px solid #334155",
+                  background: "#111827",
+                }}
+              >
+                <div style={{ flex: 1 }}>
+  {renamingProjectId === project.id ? (
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 8,
+      }}
+    >
+      <input
+        type="text"
+        value={renameProjectName}
+        onChange={(event) =>
+          setRenameProjectName(event.target.value)
+        }
+        disabled={renameProjectLoading}
+        autoFocus
+        style={{
+          ...fieldStyle,
+          flex: 1,
+          minWidth: 0,
+        }}
+      />
+
+      <button
+        type="button"
+        onClick={() => {
+          void handleRenameCloudProject();
+        }}
+        disabled={renameProjectLoading}
+        style={{
+          border: "none",
+          borderRadius: 8,
+          padding: "8px 12px",
+          background: "#22c55e",
+          color: "#052e16",
+          fontWeight: 700,
+          cursor: renameProjectLoading
+            ? "not-allowed"
+            : "pointer",
+          opacity: renameProjectLoading ? 0.65 : 1,
+        }}
+      >
+        {renameProjectLoading ? "Saving..." : "Save"}
+      </button>
+
+      <button
+        type="button"
+        onClick={() => {
+          setRenamingProjectId(null);
+          setRenameProjectName("");
+        }}
+        disabled={renameProjectLoading}
+        style={{
+          border: "1px solid #475569",
+          borderRadius: 8,
+          padding: "8px 12px",
+          background: "#1e293b",
+          color: "white",
+          cursor: renameProjectLoading
+            ? "not-allowed"
+            : "pointer",
+        }}
+      >
+        Cancel
+      </button>
+    </div>
+  ) : (
+    <>
+      <div style={{ fontWeight: 700 }}>
+        {project.name}
+      </div>
+
+      <div
+        style={{
+          marginTop: 5,
+          fontSize: 12,
+          color: "#94a3b8",
+        }}
+      >
+        Last saved:{" "}
+        {new Date(project.updatedAt).toLocaleString()}
+      </div>
+    </>
+  )}
+</div>
+
+<div
+  style={{
+    display: "flex",
+    alignItems: "center",
+    gap: 8,
+  }}
+>
+  <button
+    type="button"
+    onClick={() => {
+      void handleOpenCloudProject(project.id);
+    }}
+    disabled={renamingProjectId === project.id}
+    style={{
+      border: "none",
+      borderRadius: 8,
+      padding: "8px 12px",
+      background: "#38bdf8",
+      color: "#082f49",
+      fontWeight: 700,
+      cursor:
+        renamingProjectId === project.id
+          ? "not-allowed"
+          : "pointer",
+      opacity:
+        renamingProjectId === project.id ? 0.55 : 1,
+    }}
+  >
+    Open
+  </button>
+
+  <button
+    type="button"
+    onClick={() => {
+      setRenamingProjectId(project.id);
+      setRenameProjectName(project.name);
+      setCloudProjectsError("");
+    }}
+    disabled={renamingProjectId !== null}
+    style={{
+      border: "1px solid #475569",
+      borderRadius: 8,
+      padding: "8px 12px",
+      background: "#1e293b",
+      color: "white",
+      cursor:
+        renamingProjectId !== null
+          ? "not-allowed"
+          : "pointer",
+      opacity: renamingProjectId !== null ? 0.55 : 1,
+    }}
+  >
+    Rename
+  </button>
+
+<button
+  type="button"
+  onClick={() => {
+    void handleDeleteCloudProject(
+      project.id,
+      project.name
+    );
+  }}
+  disabled={renamingProjectId !== null}
+  style={{
+    border: "1px solid #7f1d1d",
+    borderRadius: 8,
+    padding: "8px 12px",
+    background: "#991b1b",
+    color: "white",
+    fontWeight: 700,
+    cursor:
+      renamingProjectId !== null
+        ? "not-allowed"
+        : "pointer",
+    opacity: renamingProjectId !== null ? 0.55 : 1,
+  }}
+>
+  Delete
+</button>
+
+</div>
+              </div>
+            ))}
+          </div>
+        )}
+    </div>
+  </>
+)}
+
+
+
 {authReady && currentUser && (
   <div
     style={{
@@ -6996,14 +7754,44 @@ setCopyLoadProjectCodes({});
     </div>
 
     <div style={{ lineHeight: 1.25 }}>
-      <div style={{ fontSize: 13, fontWeight: 700 }}>
-        Signed in
-      </div>
-
-      <div style={{ fontSize: 12, color: "#94a3b8" }}>
-        {currentUser.email}
-      </div>
+  <div
+    style={{
+      display: "flex",
+      alignItems: "center",
+      gap: 8,
+    }}
+  >
+    <div style={{ fontSize: 13, fontWeight: 700 }}>
+      {userProfile?.fullName || "Signed in"}
     </div>
+
+    <span
+      style={{
+        padding: "2px 7px",
+        borderRadius: 999,
+        background: "#1e3a8a",
+        color: "#bfdbfe",
+        fontSize: 10,
+        fontWeight: 800,
+        letterSpacing: 0.6,
+      }}
+    >
+      {userProfileLoading
+        ? "..."
+        : (userProfile?.plan || "basic").toUpperCase()}
+    </span>
+  </div>
+
+  <div
+    style={{
+      marginTop: 3,
+      fontSize: 12,
+      color: "#94a3b8",
+    }}
+  >
+    {currentUser.email}
+  </div>
+</div>
 
     <button
       type="button"
