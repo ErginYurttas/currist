@@ -211,6 +211,8 @@ export default function Home() {
   null
 );
 
+  const isAdmin = userProfile?.role === "admin";
+
   const [renamingProjectId, setRenamingProjectId] = useState<string | null>(null);
   const [renameProjectName, setRenameProjectName] = useState("");
   const [renameProjectLoading, setRenameProjectLoading] = useState(false);
@@ -6432,265 +6434,7 @@ const unassignedAnalyzerLoads = analyzerAssignableItems.filter(
     overflowY: "auto",
   }}
 >
-<h3>✅ COMPLETED FEATURES</h3>
 
-<div><strong>Structure Management</strong></div>
-<div>- Project / Building / Block / Floor / Room Hierarchy</div>
-<div>- Country Selection With Flag Badge</div>
-<div>- Building Type Selection With Icon</div>
-<div>- Alphabetical / Created Date Sorting</div>
-<div>- Create / Edit / Delete Structure Nodes</div>
-<div>- Full Structure Reconstruction From Project Import</div>
-<div>- Automatic Destination Structure Creation For Panel Import</div>
-<div>- Existing Structure Reuse During Panel Import</div>
-<div>- Editable Panel Import Destination</div>
-
-<br />
-
-<div><strong>Load Management</strong></div>
-<div>- Create / Edit / Copy / Delete Load</div>
-<div>- Load Detail Popup</div>
-<div>- Catalog-Based Loads</div>
-<div>- Manual Loads</div>
-<div>- 1P / 3P Load Definition</div>
-<div>- R / S / T Phase Line Selection</div>
-<div>- Load Character And Cos φ Selection</div>
-<div>- Starting Method Definition</div>
-<div>- Starting Method Display In Load Detail</div>
-<div>- Cable Length Entry</div>
-<div>- Cable Type Definition</div>
-<div>- Load Note / Internal Comment</div>
-<div>- Connected Panel Assignment</div>
-<div>- Unassigned Load Management</div>
-<div>- Full Load Reconstruction From Project Import</div>
-<div>- Load Reconstruction With New IDs During Panel Import</div>
-<div>- Connected Panel ID Remapping During Panel Import</div>
-<div>- Packaged Panel Load Reconstruction</div>
-
-<br />
-
-<div><strong>Panel Management</strong></div>
-<div>- Create / Edit / Copy / Delete Panel</div>
-<div>- Copy Panel With Connected Loads</div>
-<div>- Panel Detail Popup</div>
-<div>- Panel Environment And IP Rating</div>
-<div>- Packaged Panel Logic</div>
-<div>- Packaged Panel Feeders</div>
-<div>- Packaged Panel Supply Cable Definition</div>
-<div>- Upstream Supply Panel Connection</div>
-<div>- Connected Panel Relationships</div>
-<div>- Packaged Panel Supply Phase Definition</div>
-<div>- Full Panel Reconstruction From Project Import</div>
-<div>- Panel Reuse In Another Project / Building / Floor / Room</div>
-<div>- Main Panel ID Remapping During Panel Import</div>
-<div>- Packaged Panel ID Remapping During Panel Import</div>
-<div>- Packaged Panel Supply Relationship Reconstruction</div>
-<div>- Editable Project And Location Information Before Panel Import</div>
-
-<br />
-
-<div><strong>Project & Panel Summary</strong></div>
-<div>- Installed Power Calculation</div>
-<div>- Current Calculation</div>
-<div>- Project Load Count</div>
-<div>- Packaged Panel Counted As A Single Project Load / Feeder</div>
-<div>- Packaged Panel Internal Loads Excluded From Project Load Count</div>
-<div>- Panel Outgoing Circuit Count</div>
-<div>- P / Q / S Calculation</div>
-<div>- Weighted Average Cos φ</div>
-<div>- Phase Distribution</div>
-<div>- Phase Balance Analysis</div>
-<div>- Balance Status (Excellent / Good / Attention / Critical)</div>
-<div>- Power Factor Summary</div>
-<div>- Phase Angle (φ) Calculation</div>
-<div>- Power Factor Type Classification (Inductive / Capacitive / Ohmic)</div>
-
-<br />
-
-<div><strong>Energy Analyzer / Meter</strong></div>
-<div>- Multiple Analyzers Per Panel</div>
-<div>- Assign Loads To Analyzer</div>
-<div>- Each Load Can Belong To Only One Analyzer</div>
-<div>- Common Unassigned Loads List</div>
-<div>- Assigned Loads Move Under Related Analyzer</div>
-<div>- Analyzer Badge On Panel Card</div>
-<div>- Packaged Panel Feeder Assignment Support</div>
-<div>- Analyzer Reconstruction From Project Import</div>
-<div>- Analyzer Reconstruction During Panel Import</div>
-<div>- Analyzer To Load ID Remapping</div>
-<div>- Analyzer To Packaged Panel Feeder ID Remapping</div>
-
-<br />
-
-<div><strong>Excel Panel Export</strong></div>
-<div>- Professional Panel Report Export</div>
-<div>- Engineering-Style Header</div>
-<div>- Panel-Based Excel File Naming</div>
-<div>- File Name Format: Panel Name - Panel Report.xlsx</div>
-<div>- KPI Dashboard</div>
-<div>- P / Q / S Export</div>
-<div>- Power Factor Summary Export</div>
-<div>- Phase Distribution Export</div>
-<div>- Phase Balance Analysis Export</div>
-<div>- Analyzer Information Export</div>
-<div>- Connected Panel Export</div>
-<div>- Starting Method Export</div>
-<div>- Cable Length Export</div>
-<div>- Cable Type Export</div>
-<div>- Load Notes Export</div>
-<div>- Engineering Load Schedule</div>
-<div>- Created / Revised Date Export</div>
-<div>- Packaged Panel Grouping</div>
-<div>- Multi-Row Packaged Panel Export</div>
-<div>- Analyzer Cell Merge</div>
-<div>- Packaged Panel Feeder Merge Logic</div>
-<div>- Merged Feeder Information For Packaged Panels</div>
-<div>- Cable Summary Report</div>
-<div>- Automatic Cable Section Calculation</div>
-<div>- Voltage Drop-Based Cable Sizing</div>
-<div>- 3% Voltage Drop Information</div>
-
-<br />
-
-<div><strong>Currist Engineering Metadata</strong></div>
-<div>- Hidden Engineering Data Sheet</div>
-<div>- Currist File Validation Marker</div>
-<div>- Export Version Information</div>
-<div>- Project Metadata Table</div>
-<div>- Structure Data Table</div>
-<div>- Panel Data Table</div>
-<div>- Load Data Table</div>
-<div>- Analyzer Data Table</div>
-<div>- Country And Building Type Storage</div>
-<div>- Packaged Panel Relationship Storage</div>
-<div>- Analyzer Connected Item Storage</div>
-
-<br />
-
-<div><strong>Project Recovery & Restore</strong></div>
-<div>- Restore Entire Project From Currist Excel Export</div>
-<div>- Replace Current Project With Imported Project</div>
-<div>- Project Restore Safety Confirmation</div>
-<div>- Restore Option Availability Check</div>
-<div>- Restore Button Disabled When Full Project Data Is Missing</div>
-<div>- Country Reconstruction</div>
-<div>- Building Type Reconstruction</div>
-<div>- Structure Reconstruction</div>
-<div>- Panel Reconstruction</div>
-<div>- Load Reconstruction</div>
-<div>- Analyzer Reconstruction</div>
-<div>- Packaged Panel Reconstruction</div>
-<div>- Supply Panel Relationship Reconstruction</div>
-
-<br />
-
-<div><strong>Panel Reuse & Import Engine</strong></div>
-<div>- Import Mode Selection Popup</div>
-<div>- Import Panel Only Mode</div>
-<div>- Restore Entire Project Mode</div>
-<div>- Editable Panel Destination Popup</div>
-<div>- Source Project Details Automatically Loaded</div>
-<div>- Project Name Editing Before Import</div>
-<div>- Building Name Editing Before Import</div>
-<div>- Block Editing Before Import</div>
-<div>- Floor Editing Before Import</div>
-<div>- Room Number Editing Before Import</div>
-<div>- Room Description Editing Before Import</div>
-<div>- Country Editing Before Import</div>
-<div>- Building Type Editing Before Import</div>
-<div>- Automatic Destination Structure Creation</div>
-<div>- Existing Destination Structure Detection And Reuse</div>
-<div>- Main Panel Import</div>
-<div>- Main Panel Load Import</div>
-<div>- Packaged Panel Import</div>
-<div>- Packaged Panel Load Import</div>
-<div>- Upstream Supply Panel Mapping</div>
-<div>- Load ID Mapping</div>
-<div>- Panel ID Mapping</div>
-<div>- Analyzer ID Reconstruction</div>
-<div>- Analyzer To Load Mapping</div>
-<div>- Analyzer To Packaged Panel Feeder Mapping</div>
-<div>- Reuse The Same Panel In Different Rooms</div>
-<div>- Reuse Existing Engineering Designs In New Projects</div>
-
-<br />
-
-<div><strong>Authentication & User Account</strong></div>
-<div>- Supabase Authentication Integration</div>
-<div>- Secure User Registration</div>
-<div>- Email Verification</div>
-<div>- Secure Email And Password Login</div>
-<div>- Persistent User Session</div>
-<div>- Automatic Session Restoration</div>
-<div>- Authentication State Monitoring</div>
-<div>- Protected Currist Workspace</div>
-<div>- Signed-In User Information Card</div>
-<div>- User Email Display</div>
-<div>- User Profile Data Foundation</div>
-<div>- User Role Management Foundation</div>
-<div>- Secure Logout</div>
-
-<br />
-
-<div><strong>User Profile & Plan Foundation</strong></div>
-<div>- Supabase Profiles Table</div>
-<div>- Automatic Profile Creation For New Users</div>
-<div>- Existing User Profile Migration</div>
-<div>- Basic / Standard / Advanced Plan Model</div>
-<div>- Subscription Status Foundation</div>
-<div>- User Role Foundation</div>
-<div>- Trial End Date Foundation</div>
-<div>- Last Seen Activity Foundation</div>
-<div>- Profile Row Level Security</div>
-<div>- Current User Profile Loading</div>
-<div>- Active Plan Badge In User Card</div>
-
-<br />
-
-<div><strong>Cloud Project Management</strong></div>
-<div>- Supabase Projects Table</div>
-<div>- User-Based Project Ownership</div>
-<div>- Project Row Level Security</div>
-<div>- Secure Cloud Project Save</div>
-<div>- Local And Cloud Project Save Support</div>
-<div>- My Projects Dashboard</div>
-<div>- User-Specific Project Listing</div>
-<div>- Project Sorting By Last Update</div>
-<div>- Open Project From Cloud</div>
-<div>- Rename Cloud Project</div>
-<div>- Project Name Synchronization With Export Data</div>
-<div>- Delete Cloud Project With Confirmation</div>
-<div>- Continue From Last Project</div>
-<div>- User-Specific Last Project Tracking</div>
-<div>- Automatic Last Project Restoration After Login</div>
-<div>- Cloud Project Persistence After Logout And Refresh</div>
-
-<br />
-
-<div><strong>Project Data Foundation</strong></div>
-<div>- Versioned Currist Project Document</div>
-<div>- Unique Project Document ID</div>
-<div>- Project Created And Updated Timestamps</div>
-<div>- Centralized Project Data Structure</div>
-<div>- Project Data Validation</div>
-<div>- Local Project Storage Foundation</div>
-<div>- Project Manager Service Foundation</div>
-<div>- Cloud-Ready Project Data Architecture</div>
-<div>- Cloud Project Summary Model</div>
-<div>- Cloud Project Load / Save Service</div>
-<div>- Cloud Project Rename / Delete Service</div>
-
-<br />
-
-<div><strong>Production & Deployment</strong></div>
-<div>- Vercel Production Deployment</div>
-<div>- Custom Domain Integration</div>
-<div>- Production Supabase Environment Configuration</div>
-<div>- Secure Environment Variable Management</div>
-<div>- Live Authentication On www.currist.com</div>
-<div>- Live Cloud Project Management On www.currist.com</div>
-
-<hr style={{ margin: "16px 0", borderColor: "#334155" }} />
 
 <h3>✅ COMPLETED FEATURES</h3>
 
@@ -6982,7 +6726,7 @@ const unassignedAnalyzerLoads = analyzerAssignableItems.filter(
 <div>Contact: erginyurttas@gmail.com</div>
 
 <div style={{ marginTop: 12 }}>
-  <strong>Last Update:</strong> Jul 16, 2026
+  <strong>Last Update:</strong> Jul 18, 2026
 </div>
 
 </div>
@@ -7780,6 +7524,23 @@ setCopyLoadProjectCodes({});
         ? "..."
         : (userProfile?.plan || "basic").toUpperCase()}
     </span>
+
+            {isAdmin && (
+      <span
+        style={{
+          padding: "2px 7px",
+          borderRadius: 999,
+          background: "#7c2d12",
+          color: "#fed7aa",
+          fontSize: 10,
+          fontWeight: 800,
+          letterSpacing: 0.6,
+        }}
+      >
+        ADMIN
+      </span>
+    )}
+
   </div>
 
   <div
@@ -7792,6 +7553,26 @@ setCopyLoadProjectCodes({});
     {currentUser.email}
   </div>
 </div>
+
+{isAdmin && (
+  <button
+    type="button"
+    onClick={() => {
+      window.location.href = "/admin";
+    }}
+    style={{
+      border: "1px solid #d97706",
+      borderRadius: 8,
+      padding: "7px 10px",
+      background: "#78350f",
+      color: "#fef3c7",
+      cursor: "pointer",
+      fontWeight: 700,
+    }}
+  >
+    Admin Dashboard
+  </button>
+)}
 
     <button
       type="button"
