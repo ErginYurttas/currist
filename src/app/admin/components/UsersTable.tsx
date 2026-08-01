@@ -6,6 +6,11 @@ import { supabase } from "../../lib/supabase";
 type AdminUser = {
   user_id: string;
   email: string | null;
+  full_name: string | null;
+  account_type: string | null;
+  company_name: string | null;
+  country: string | null;
+  profession: string | null;
   plan: string | null;
   role: string | null;
   email_verified: boolean;
@@ -35,13 +40,16 @@ export default function UsersTable({
 }: UsersTableProps) {
   const [editableUsers, setEditableUsers] = useState<EditableUser[]>([]);
   const [savingUserId, setSavingUserId] = useState<string | null>(null);
+
   const [rowMessages, setRowMessages] = useState<
     Record<string, { type: "success" | "error"; text: string }>
   >({});
+
   const [searchText, setSearchText] = useState("");
   const [planFilter, setPlanFilter] = useState("all");
   const [roleFilter, setRoleFilter] = useState("all");
   const [verificationFilter, setVerificationFilter] = useState("all");
+  const [accountTypeFilter, setAccountTypeFilter] = useState("all");
   const [sortOption, setSortOption] = useState("newest");
 
   useEffect(() => {
@@ -61,72 +69,88 @@ export default function UsersTable({
   const filteredUsers = useMemo(() => {
     const normalizedSearch = searchText.trim().toLowerCase();
 
-    const users = editableUsers.filter((user) => {
+    const filtered = editableUsers.filter((user) => {
       const matchesSearch =
         normalizedSearch.length === 0 ||
-        (user.email ?? "").toLowerCase().includes(normalizedSearch);
+        (user.email ?? "").toLowerCase().includes(normalizedSearch) ||
+        (user.full_name ?? "").toLowerCase().includes(normalizedSearch) ||
+        (user.company_name ?? "").toLowerCase().includes(normalizedSearch) ||
+        (user.country ?? "").toLowerCase().includes(normalizedSearch) ||
+        (user.profession ?? "").toLowerCase().includes(normalizedSearch);
 
       const matchesPlan =
         planFilter === "all" || user.draftPlan === planFilter;
 
       const matchesRole =
-  roleFilter === "all" || user.draftRole === roleFilter;
+        roleFilter === "all" || user.draftRole === roleFilter;
 
-const matchesVerification =
-  verificationFilter === "all" ||
-  (verificationFilter === "verified" && user.email_verified) ||
-  (verificationFilter === "not-verified" && !user.email_verified);
+      const matchesVerification =
+        verificationFilter === "all" ||
+        (verificationFilter === "verified" && user.email_verified) ||
+        (verificationFilter === "not-verified" && !user.email_verified);
 
-return (
-  matchesSearch &&
-  matchesPlan &&
-  matchesRole &&
-  matchesVerification
-);
+      const normalizedAccountType = (user.account_type ?? "").toLowerCase();
 
-     });
+      const matchesAccountType =
+        accountTypeFilter === "all" ||
+        normalizedAccountType === accountTypeFilter;
 
-    return users.sort((a, b) => {
-  switch (sortOption) {
-    case "newest":
       return (
-        new Date(b.created_at).getTime() -
-        new Date(a.created_at).getTime()
+        matchesSearch &&
+        matchesPlan &&
+        matchesRole &&
+        matchesVerification &&
+        matchesAccountType
       );
+    });
 
-    case "oldest":
-      return (
-        new Date(a.created_at).getTime() -
-        new Date(b.created_at).getTime()
-      );
+    return [...filtered].sort((a, b) => {
+      switch (sortOption) {
+        case "newest":
+          return (
+            new Date(b.created_at).getTime() -
+            new Date(a.created_at).getTime()
+          );
 
-    case "projects":
-      return b.project_count - a.project_count;
+        case "oldest":
+          return (
+            new Date(a.created_at).getTime() -
+            new Date(b.created_at).getTime()
+          );
 
-    case "last-login": {
-      const aTime = a.last_sign_in_at
-        ? new Date(a.last_sign_in_at).getTime()
-        : 0;
+        case "projects":
+          return b.project_count - a.project_count;
 
-      const bTime = b.last_sign_in_at
-        ? new Date(b.last_sign_in_at).getTime()
-        : 0;
+        case "last-login": {
+          const aTime = a.last_sign_in_at
+            ? new Date(a.last_sign_in_at).getTime()
+            : 0;
 
-      return bTime - aTime;
-    }
+          const bTime = b.last_sign_in_at
+            ? new Date(b.last_sign_in_at).getTime()
+            : 0;
 
-    default:
-      return 0;
-  }
-});
+          return bTime - aTime;
+        }
+
+        case "name":
+          return (a.full_name ?? a.email ?? "").localeCompare(
+            b.full_name ?? b.email ?? ""
+          );
+
+        default:
+          return 0;
+      }
+    });
   }, [
-  editableUsers,
-  searchText,
-  planFilter,
-  roleFilter,
-  verificationFilter,
-  sortOption,
-]);
+    editableUsers,
+    searchText,
+    planFilter,
+    roleFilter,
+    verificationFilter,
+    accountTypeFilter,
+    sortOption,
+  ]);
 
   function updateDraft(
     userId: string,
@@ -144,6 +168,10 @@ return (
       )
     );
 
+    clearRowMessage(userId);
+  }
+
+  function clearRowMessage(userId: string) {
     setRowMessages((currentMessages) => {
       const nextMessages = { ...currentMessages };
       delete nextMessages[userId];
@@ -178,12 +206,7 @@ return (
     }
 
     setSavingUserId(user.user_id);
-
-    setRowMessages((currentMessages) => {
-      const nextMessages = { ...currentMessages };
-      delete nextMessages[user.user_id];
-      return nextMessages;
-    });
+    clearRowMessage(user.user_id);
 
     const { data, error: updateError } = await supabase.rpc(
       "update_admin_user",
@@ -227,7 +250,7 @@ return (
       ...currentMessages,
       [user.user_id]: {
         type: "success",
-        text: "Saved.",
+        text: "User updated successfully.",
       },
     }));
 
@@ -247,11 +270,16 @@ return (
       )
     );
 
-    setRowMessages((currentMessages) => {
-      const nextMessages = { ...currentMessages };
-      delete nextMessages[user.user_id];
-      return nextMessages;
-    });
+    clearRowMessage(user.user_id);
+  }
+
+  function clearFilters() {
+    setSearchText("");
+    setPlanFilter("all");
+    setRoleFilter("all");
+    setVerificationFilter("all");
+    setAccountTypeFilter("all");
+    setSortOption("newest");
   }
 
   return (
@@ -259,7 +287,7 @@ return (
       style={{
         marginTop: 24,
         border: "1px solid #334155",
-        borderRadius: 14,
+        borderRadius: 18,
         padding: 24,
         background: "#1e293b",
       }}
@@ -271,55 +299,79 @@ return (
           alignItems: "flex-start",
           gap: 16,
           flexWrap: "wrap",
-          marginBottom: 20,
+          marginBottom: 22,
         }}
       >
         <div>
           <h2
             style={{
-              marginTop: 0,
-              marginBottom: 6,
+              margin: 0,
+              color: "#f8fafc",
+              fontSize: 22,
             }}
           >
-            Users
+            User Management
           </h2>
 
           <p
             style={{
-              margin: 0,
+              margin: "7px 0 0",
               color: "#94a3b8",
               fontSize: 13,
             }}
           >
-            Search users and manage their plans and roles.
+            Review accounts and manage user plans and roles.
           </p>
         </div>
 
         <div
           style={{
+            padding: "8px 12px",
+            border: "1px solid #334155",
+            borderRadius: 10,
+            background: "#0f172a",
             color: "#94a3b8",
             fontSize: 13,
           }}
         >
-          Showing {filteredUsers.length} of {editableUsers.length}
+          Showing{" "}
+          <strong style={{ color: "#f8fafc" }}>
+            {filteredUsers.length}
+          </strong>{" "}
+          of{" "}
+          <strong style={{ color: "#f8fafc" }}>
+            {editableUsers.length}
+          </strong>
         </div>
       </div>
 
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: "minmax(220px, 1fr) 180px 180px 180px",
-          gap: 12,
-          marginBottom: 20,
+          gridTemplateColumns:
+            "minmax(240px, 1.6fr) repeat(5, minmax(140px, 1fr)) auto",
+          gap: 10,
+          marginBottom: 24,
         }}
       >
         <input
           type="search"
           value={searchText}
           onChange={(event) => setSearchText(event.target.value)}
-          placeholder="Search by email..."
+          placeholder="Search name, email, company, country..."
           style={inputStyle}
         />
+
+        <select
+          value={accountTypeFilter}
+          onChange={(event) => setAccountTypeFilter(event.target.value)}
+          style={inputStyle}
+        >
+          <option value="all">All account types</option>
+          <option value="individual">Individual</option>
+          <option value="company">Company</option>
+          <option value="business">Business</option>
+        </select>
 
         <select
           value={planFilter}
@@ -343,76 +395,202 @@ return (
         </select>
 
         <select
-  value={verificationFilter}
-  onChange={(event) => setVerificationFilter(event.target.value)}
-  style={inputStyle}
->
-  <option value="all">All verification</option>
-  <option value="verified">Verified</option>
-  <option value="not-verified">Not verified</option>
-</select>
+          value={verificationFilter}
+          onChange={(event) => setVerificationFilter(event.target.value)}
+          style={inputStyle}
+        >
+          <option value="all">All verification</option>
+          <option value="verified">Verified</option>
+          <option value="not-verified">Not verified</option>
+        </select>
 
-<select
-  value={sortOption}
-  onChange={(event) => setSortOption(event.target.value)}
-  style={inputStyle}
->
-  <option value="newest">Newest users</option>
-<option value="oldest">Oldest users</option>
-<option value="projects">Most projects</option>
-<option value="last-login">Last login</option>
-</select>
+        <select
+          value={sortOption}
+          onChange={(event) => setSortOption(event.target.value)}
+          style={inputStyle}
+        >
+          <option value="newest">Newest users</option>
+          <option value="oldest">Oldest users</option>
+          <option value="name">Name A–Z</option>
+          <option value="projects">Most projects</option>
+          <option value="last-login">Latest login</option>
+        </select>
 
+        <button
+          type="button"
+          onClick={clearFilters}
+          style={secondaryButtonStyle}
+        >
+          Clear
+        </button>
       </div>
 
       {loading ? (
-        <p>Loading users...</p>
+        <div style={emptyStateStyle}>Loading users...</div>
       ) : error ? (
-        <p style={{ color: "#ef4444" }}>{error}</p>
+        <div
+          style={{
+            ...emptyStateStyle,
+            color: "#fca5a5",
+            borderColor: "#7f1d1d",
+          }}
+        >
+          {error}
+        </div>
       ) : editableUsers.length === 0 ? (
-        <p>No users found.</p>
+        <div style={emptyStateStyle}>No users found.</div>
       ) : filteredUsers.length === 0 ? (
-        <p>No users match the selected filters.</p>
+        <div style={emptyStateStyle}>
+          No users match the selected filters.
+        </div>
       ) : (
         <div
           style={{
-            overflowX: "auto",
+            display: "grid",
+            gap: 16,
           }}
         >
-          <table
-            style={{
-              width: "100%",
-              borderCollapse: "collapse",
-              minWidth: 1050,
-            }}
-          >
-            <thead>
-              <tr>
-                <th style={thStyle}>Email</th>
-                <th style={thStyle}>Plan</th>
-                <th style={thStyle}>Role</th>
-                <th style={thStyle}>Verified</th>
-                <th style={thStyle}>Projects</th>
-                <th style={thStyle}>Created</th>
-                <th style={thStyle}>Last Login</th>
-                <th style={thStyle}>Actions</th>
-              </tr>
-            </thead>
+          {filteredUsers.map((user) => {
+            const hasChanges =
+              user.draftPlan !== user.plan ||
+              user.draftRole !== user.role;
 
-            <tbody>
-              {filteredUsers.map((user) => {
-                const hasChanges =
-                  user.draftPlan !== user.plan ||
-                  user.draftRole !== user.role;
+            const isSaving = savingUserId === user.user_id;
+            const message = rowMessages[user.user_id];
 
-                const isSaving = savingUserId === user.user_id;
-                const message = rowMessages[user.user_id];
+            return (
+              <article
+                key={user.user_id}
+                style={{
+                  border: "1px solid #334155",
+                  borderRadius: 16,
+                  padding: 20,
+                  background: "#0f172a",
+                  boxShadow: "0 12px 30px rgba(0, 0, 0, 0.16)",
+                }}
+              >
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns:
+                      "minmax(260px, 1.5fr) minmax(210px, 1fr) minmax(210px, 1fr)",
+                    gap: 24,
+                  }}
+                >
+                  <div>
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "flex-start",
+                        gap: 14,
+                      }}
+                    >
+                      <div
+                        style={{
+                          width: 46,
+                          height: 46,
+                          flexShrink: 0,
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          borderRadius: 14,
+                          background: "#1d4ed8",
+                          color: "#ffffff",
+                          fontSize: 17,
+                          fontWeight: 800,
+                        }}
+                      >
+                        {getInitials(user.full_name, user.email)}
+                      </div>
 
-                return (
-                  <tr key={user.user_id}>
-                    <td style={tdStyle}>{user.email ?? "-"}</td>
+                      <div style={{ minWidth: 0 }}>
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 8,
+                            flexWrap: "wrap",
+                          }}
+                        >
+                          <h3
+                            style={{
+                              margin: 0,
+                              color: "#f8fafc",
+                              fontSize: 17,
+                            }}
+                          >
+                            {user.full_name?.trim() || "Unnamed User"}
+                          </h3>
 
-                    <td style={tdStyle}>
+                          <StatusBadge verified={user.email_verified} />
+                        </div>
+
+                        <div
+                          style={{
+                            marginTop: 6,
+                            color: "#94a3b8",
+                            fontSize: 13,
+                            wordBreak: "break-word",
+                          }}
+                        >
+                          {user.email ?? "No email address"}
+                        </div>
+
+                        <div
+                          style={{
+                            marginTop: 12,
+                            color: "#475569",
+                            fontFamily: "monospace",
+                            fontSize: 11,
+                            wordBreak: "break-all",
+                          }}
+                        >
+                          ID: {user.user_id}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div
+                      style={{
+                        display: "grid",
+                        gridTemplateColumns:
+                          "repeat(2, minmax(120px, 1fr))",
+                        gap: 10,
+                        marginTop: 20,
+                      }}
+                    >
+                      <InfoBox
+                        label="Account"
+                        value={formatAccountType(user.account_type)}
+                      />
+
+                      <InfoBox
+                        label="Company"
+                        value={
+                          user.company_name ||
+                          (isIndividualAccount(user.account_type)
+                            ? "Individual account"
+                            : "Not specified")
+                        }
+                      />
+
+                      <InfoBox
+                        label="Country"
+                        value={user.country || "Not specified"}
+                      />
+
+                      <InfoBox
+                        label="Profession"
+                        value={user.profession || "Not specified"}
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <SectionLabel>Account controls</SectionLabel>
+
+                    <label style={fieldLabelStyle}>
+                      Plan
                       <select
                         value={user.draftPlan}
                         disabled={isSaving}
@@ -429,9 +607,10 @@ return (
                         <option value="standard">Standard</option>
                         <option value="advanced">Advanced</option>
                       </select>
-                    </td>
+                    </label>
 
-                    <td style={tdStyle}>
+                    <label style={fieldLabelStyle}>
+                      Role
                       <select
                         value={user.draftRole}
                         disabled={isSaving}
@@ -447,112 +626,354 @@ return (
                         <option value="user">User</option>
                         <option value="admin">Admin</option>
                       </select>
-                    </td>
+                    </label>
 
-                    <td style={tdStyle}>
-                      {user.email_verified ? "✅" : "❌"}
-                    </td>
-
-                    <td style={tdStyle}>{user.project_count}</td>
-
-                    <td style={tdStyle}>
-                      {new Date(user.created_at).toLocaleDateString()}
-                    </td>
-
-                    <td style={tdStyle}>
-                      {user.last_sign_in_at
-                      ? new Date(user.last_sign_in_at).toLocaleString()
-                      : "-"}
-                    </td>
-
-                    <td style={tdStyle}>
-                      <div
+                    <div
+                      style={{
+                        display: "flex",
+                        gap: 9,
+                        flexWrap: "wrap",
+                        marginTop: 16,
+                      }}
+                    >
+                      <button
+                        type="button"
+                        disabled={!hasChanges || isSaving}
+                        onClick={() => saveUser(user)}
                         style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 8,
-                          flexWrap: "wrap",
+                          ...buttonStyle,
+                          opacity:
+                            !hasChanges || isSaving ? 0.5 : 1,
+                          cursor:
+                            !hasChanges || isSaving
+                              ? "not-allowed"
+                              : "pointer",
                         }}
                       >
-                        <button
-                          type="button"
-                          disabled={!hasChanges || isSaving}
-                          onClick={() => saveUser(user)}
-                          style={{
-                            ...buttonStyle,
-                            opacity: !hasChanges || isSaving ? 0.5 : 1,
-                            cursor:
-                              !hasChanges || isSaving
-                                ? "not-allowed"
-                                : "pointer",
-                          }}
-                        >
-                          {isSaving ? "Saving..." : "Save"}
-                        </button>
+                        {isSaving ? "Saving..." : "Save changes"}
+                      </button>
 
-                        <button
-                          type="button"
-                          disabled={!hasChanges || isSaving}
-                          onClick={() => resetUser(user)}
-                          style={{
-                            ...secondaryButtonStyle,
-                            opacity: !hasChanges || isSaving ? 0.5 : 1,
-                            cursor:
-                              !hasChanges || isSaving
-                                ? "not-allowed"
-                                : "pointer",
-                          }}
-                        >
-                          Reset
-                        </button>
+                      <button
+                        type="button"
+                        disabled={!hasChanges || isSaving}
+                        onClick={() => resetUser(user)}
+                        style={{
+                          ...secondaryButtonStyle,
+                          opacity:
+                            !hasChanges || isSaving ? 0.5 : 1,
+                          cursor:
+                            !hasChanges || isSaving
+                              ? "not-allowed"
+                              : "pointer",
+                        }}
+                      >
+                        Reset
+                      </button>
+                    </div>
+
+                    {message && (
+                      <div
+                        style={{
+                          marginTop: 12,
+                          padding: "9px 11px",
+                          borderRadius: 8,
+                          background:
+                            message.type === "success"
+                              ? "rgba(22, 101, 52, 0.22)"
+                              : "rgba(127, 29, 29, 0.22)",
+                          color:
+                            message.type === "success"
+                              ? "#86efac"
+                              : "#fca5a5",
+                          fontSize: 12,
+                        }}
+                      >
+                        {message.text}
                       </div>
+                    )}
+                  </div>
 
-                      {message && (
-                        <div
-                          style={{
-                            marginTop: 8,
-                            fontSize: 12,
-                            color:
-                              message.type === "success"
-                                ? "#86efac"
-                                : "#fca5a5",
-                          }}
-                        >
-                          {message.text}
-                        </div>
-                      )}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                  <div>
+                    <SectionLabel>Usage and activity</SectionLabel>
+
+                    <div
+                      style={{
+                        display: "grid",
+                        gridTemplateColumns: "repeat(2, 1fr)",
+                        gap: 10,
+                      }}
+                    >
+                      <MetricBox
+                        label="Projects"
+                        value={String(user.project_count)}
+                      />
+
+                      <MetricBox
+                        label="Plan"
+                        value={capitalize(user.draftPlan)}
+                      />
+                    </div>
+
+                    <div style={{ marginTop: 16 }}>
+                      <ActivityRow
+                        label="Registered"
+                        value={formatDate(user.created_at)}
+                      />
+
+                      <ActivityRow
+                        label="Last login"
+                        value={
+                          user.last_sign_in_at
+                            ? formatDateTime(user.last_sign_in_at)
+                            : "Never"
+                        }
+                      />
+
+                      <ActivityRow
+                        label="Email"
+                        value={
+                          user.email_verified
+                            ? "Verified"
+                            : "Verification pending"
+                        }
+                      />
+                    </div>
+                  </div>
+                </div>
+              </article>
+            );
+          })}
         </div>
       )}
     </section>
   );
 }
 
-const thStyle: React.CSSProperties = {
-  textAlign: "left",
-  padding: "12px",
-  borderBottom: "1px solid #334155",
-  color: "#94a3b8",
-  fontSize: 13,
-  whiteSpace: "nowrap",
-};
+function StatusBadge({ verified }: { verified: boolean }) {
+  return (
+    <span
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 6,
+        padding: "4px 8px",
+        border: verified
+          ? "1px solid #166534"
+          : "1px solid #854d0e",
+        borderRadius: 999,
+        background: verified
+          ? "rgba(22, 101, 52, 0.22)"
+          : "rgba(133, 77, 14, 0.22)",
+        color: verified ? "#86efac" : "#fde68a",
+        fontSize: 11,
+        fontWeight: 700,
+        whiteSpace: "nowrap",
+      }}
+    >
+      <span
+        style={{
+          width: 7,
+          height: 7,
+          borderRadius: "50%",
+          background: verified ? "#22c55e" : "#f59e0b",
+        }}
+      />
 
-const tdStyle: React.CSSProperties = {
-  padding: "12px",
-  borderBottom: "1px solid #334155",
-  verticalAlign: "top",
-};
+      {verified ? "Verified" : "Pending"}
+    </span>
+  );
+}
+
+function InfoBox({
+  label,
+  value,
+}: {
+  label: string;
+  value: string;
+}) {
+  return (
+    <div
+      style={{
+        minWidth: 0,
+        padding: 11,
+        border: "1px solid #1e293b",
+        borderRadius: 10,
+        background: "#111c2f",
+      }}
+    >
+      <div
+        style={{
+          color: "#64748b",
+          fontSize: 10,
+          fontWeight: 800,
+          letterSpacing: "0.08em",
+          textTransform: "uppercase",
+        }}
+      >
+        {label}
+      </div>
+
+      <div
+        style={{
+          marginTop: 6,
+          color: "#cbd5e1",
+          fontSize: 13,
+          lineHeight: 1.4,
+          wordBreak: "break-word",
+        }}
+      >
+        {value}
+      </div>
+    </div>
+  );
+}
+
+function MetricBox({
+  label,
+  value,
+}: {
+  label: string;
+  value: string;
+}) {
+  return (
+    <div
+      style={{
+        padding: 14,
+        border: "1px solid #1e293b",
+        borderRadius: 12,
+        background: "#111c2f",
+      }}
+    >
+      <div
+        style={{
+          color: "#f8fafc",
+          fontSize: 20,
+          fontWeight: 800,
+        }}
+      >
+        {value}
+      </div>
+
+      <div
+        style={{
+          marginTop: 4,
+          color: "#64748b",
+          fontSize: 11,
+        }}
+      >
+        {label}
+      </div>
+    </div>
+  );
+}
+
+function SectionLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <div
+      style={{
+        marginBottom: 14,
+        color: "#64748b",
+        fontSize: 11,
+        fontWeight: 800,
+        letterSpacing: "0.09em",
+        textTransform: "uppercase",
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
+function ActivityRow({
+  label,
+  value,
+}: {
+  label: string;
+  value: string;
+}) {
+  return (
+    <div
+      style={{
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "flex-start",
+        gap: 12,
+        padding: "10px 0",
+        borderBottom: "1px solid #1e293b",
+      }}
+    >
+      <span
+        style={{
+          color: "#64748b",
+          fontSize: 12,
+        }}
+      >
+        {label}
+      </span>
+
+      <span
+        style={{
+          color: "#cbd5e1",
+          fontSize: 12,
+          textAlign: "right",
+        }}
+      >
+        {value}
+      </span>
+    </div>
+  );
+}
+
+function getInitials(
+  fullName: string | null,
+  email: string | null
+) {
+  const name = fullName?.trim();
+
+  if (name) {
+    return name
+      .split(/\s+/)
+      .slice(0, 2)
+      .map((part) => part.charAt(0).toUpperCase())
+      .join("");
+  }
+
+  return email?.charAt(0).toUpperCase() || "?";
+}
+
+function formatAccountType(accountType: string | null) {
+  if (!accountType) {
+    return "Not specified";
+  }
+
+  return accountType
+    .replace(/[-_]/g, " ")
+    .replace(/\b\w/g, (character) => character.toUpperCase());
+}
+
+function isIndividualAccount(accountType: string | null) {
+  const value = accountType?.toLowerCase() ?? "";
+
+  return value === "individual" || value === "personal";
+}
+
+function capitalize(value: string) {
+  return value.charAt(0).toUpperCase() + value.slice(1);
+}
+
+function formatDate(value: string) {
+  return new Date(value).toLocaleDateString();
+}
+
+function formatDateTime(value: string) {
+  return new Date(value).toLocaleString();
+}
 
 const inputStyle: React.CSSProperties = {
   width: "100%",
   minWidth: 0,
   border: "1px solid #475569",
-  borderRadius: 8,
+  borderRadius: 9,
   padding: "10px 12px",
   background: "#0f172a",
   color: "#e2e8f0",
@@ -560,18 +981,27 @@ const inputStyle: React.CSSProperties = {
 
 const selectStyle: React.CSSProperties = {
   width: "100%",
-  minWidth: 110,
+  minWidth: 0,
+  marginTop: 7,
   border: "1px solid #475569",
-  borderRadius: 8,
-  padding: "8px 10px",
-  background: "#0f172a",
+  borderRadius: 9,
+  padding: "9px 11px",
+  background: "#111c2f",
   color: "#e2e8f0",
+};
+
+const fieldLabelStyle: React.CSSProperties = {
+  display: "block",
+  marginBottom: 13,
+  color: "#94a3b8",
+  fontSize: 12,
+  fontWeight: 700,
 };
 
 const buttonStyle: React.CSSProperties = {
   border: "1px solid #2563eb",
-  borderRadius: 8,
-  padding: "8px 12px",
+  borderRadius: 9,
+  padding: "9px 13px",
   background: "#2563eb",
   color: "#ffffff",
   fontWeight: 700,
@@ -579,9 +1009,18 @@ const buttonStyle: React.CSSProperties = {
 
 const secondaryButtonStyle: React.CSSProperties = {
   border: "1px solid #475569",
-  borderRadius: 8,
-  padding: "8px 12px",
+  borderRadius: 9,
+  padding: "9px 13px",
   background: "#0f172a",
   color: "#cbd5e1",
   fontWeight: 700,
+  cursor: "pointer",
+};
+
+const emptyStateStyle: React.CSSProperties = {
+  padding: 28,
+  border: "1px dashed #475569",
+  borderRadius: 12,
+  color: "#94a3b8",
+  textAlign: "center",
 };

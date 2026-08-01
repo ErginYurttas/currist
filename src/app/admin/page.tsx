@@ -14,6 +14,11 @@ import {
 type AdminUser = {
   user_id: string;
   email: string | null;
+  full_name: string | null;
+  account_type: string | null;
+  company_name: string | null;
+  country: string | null;
+  profession: string | null;
   plan: string | null;
   role: string | null;
   email_verified: boolean;

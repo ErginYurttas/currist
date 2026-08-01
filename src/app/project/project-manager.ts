@@ -12,6 +12,8 @@ export type CloudProjectSummary = {
   name: string;
   createdAt: string;
   updatedAt: string;
+  projectCountry: string;
+  buildingType: string;
 };
 
 export class ProjectManager {
@@ -66,6 +68,7 @@ export class ProjectManager {
     if (error) {
       throw new Error(error.message);
     }
+
   }
 
   static async getCloudProjects(): Promise<
@@ -73,19 +76,26 @@ export class ProjectManager {
   > {
     const { data, error } = await supabase
       .from("projects")
-      .select("id, name, created_at, updated_at")
+      .select("id, name, created_at, updated_at, document")
       .order("updated_at", { ascending: false });
 
     if (error) {
       throw new Error(error.message);
     }
 
-    return (data ?? []).map((project) => ({
-      id: project.id,
-      name: project.name,
-      createdAt: project.created_at,
-      updatedAt: project.updated_at,
-    }));
+    return (data ?? []).map((project) => {
+  const document =
+    project.document as CurristProjectDocument;
+
+  return {
+    id: project.id,
+    name: project.name,
+    createdAt: project.created_at,
+    updatedAt: project.updated_at,
+    projectCountry: document.projectCountry,
+    buildingType: document.buildingType,
+  };
+});
   }
 
   static async getCloudProject(
