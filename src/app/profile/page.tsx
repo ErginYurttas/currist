@@ -4,6 +4,9 @@ import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "../lib/supabase";
 
+import { theme } from "../design/theme";
+import Header from "../components/Header";
+
 
 type ProfileForm = {
   full_name: string;
@@ -171,14 +174,11 @@ export default function ProfilePage() {
 
   return (
     <main style={pageStyle}>
+      
+    <Header logoHref="/dashboard" />
+
       <div style={pageContainerStyle}>
-        <button
-          type="button"
-          onClick={() => router.push("/dashboard")}
-          style={backButtonStyle}
-        >
-          ← Back to Dashboard
-        </button>
+        
 
         <section style={profileCardStyle}>
           <div style={headerStyle}>
@@ -326,14 +326,7 @@ export default function ProfilePage() {
             )}
 
             <div style={actionsStyle}>
-              <button
-                type="button"
-                onClick={() => router.push("/dashboard")}
-                disabled={saving}
-                style={secondaryButtonStyle}
-              >
-                Cancel
-              </button>
+              
 
               <button
                 type="submit"
@@ -370,28 +363,19 @@ function getInitials(fullName: string, email: string) {
 
 const pageStyle: React.CSSProperties = {
   minHeight: "100vh",
-  padding: "48px 24px",
-  background:
-    "radial-gradient(circle at top, #172554 0%, #0f172a 38%, #0b1220 100%)",
-  color: "#e2e8f0",
+  padding: 0,
+  background: theme.colors.background,
+  color: theme.colors.text,
+  fontFamily: theme.typography.fontFamily,
 };
 
 const pageContainerStyle: React.CSSProperties = {
-  width: "100%",
-  maxWidth: 900,
+  width: "min(900px, calc(100% - 40px))",
   margin: "0 auto",
+  padding: "48px 0 60px",
 };
 
-const backButtonStyle: React.CSSProperties = {
-  marginBottom: 20,
-  border: "1px solid #475569",
-  borderRadius: 9,
-  padding: "9px 13px",
-  background: "rgba(15, 23, 42, 0.8)",
-  color: "#cbd5e1",
-  fontWeight: 700,
-  cursor: "pointer",
-};
+
 
 const profileCardStyle: React.CSSProperties = {
   border: "1px solid #334155",

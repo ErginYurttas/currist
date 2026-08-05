@@ -142,20 +142,21 @@ export default function AuthForm() {
 
       const { data, error } = await supabase.auth.signUp({
         email: normalizedEmail,
-        password: signUpPassword,
-        options: {
-          data: {
-            full_name: normalizedFullName,
-            account_type: accountType,
-            company_name:
-              accountType === "company"
-                ? normalizedCompanyName
-                : null,
-            country: normalizedCountry,
-            profession: normalizedProfession,
-          },
-        },
-      });
+  password: signUpPassword,
+  options: {
+    emailRedirectTo: `${window.location.origin}/login`,
+    data: {
+      full_name: normalizedFullName,
+      account_type: accountType,
+      company_name:
+        accountType === "company"
+          ? normalizedCompanyName
+          : null,
+      country: normalizedCountry,
+      profession: normalizedProfession,
+    },
+  },
+});
 
       if (error) {
         throw error;

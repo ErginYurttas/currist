@@ -10,6 +10,7 @@ import {
 import CurristLogo from "../components/CurristLogo";
 import { theme } from "../design/theme";
 import { supabase } from "../lib/supabase";
+import Header from "../components/Header";
 
 type CloudProjects = Awaited<
   ReturnType<typeof ProjectManager.getCloudProjects>
@@ -212,107 +213,7 @@ export default function DashboardPage() {
   return (
     <main className="dashboard-page">
       
-      <header className="dashboard-header">
-  <CurristLogo href="/dashboard" />
-
-  <div className="dashboard-header-actions">
-    <Link href="/tool" className="header-link">
-      Workspace
-    </Link>
-
-    {profile?.role === "admin" && (
-      <Link href="/admin" className="header-link">
-        Admin
-      </Link>
-    )}
-
-    <div className="user-menu-wrapper">
-  <button
-    type="button"
-    className="user-menu-button"
-    onClick={() =>
-      setUserMenuOpen((currentValue) => !currentValue)
-    }
-    aria-expanded={userMenuOpen}
-  >
-    <div className="profile-avatar">
-      {profileInitial}
-    </div>
-
-    <span className="user-menu-name">
-      {profile?.fullName || "Currist User"}
-    </span>
-
-    <span className="user-menu-arrow">
-      {userMenuOpen ? "▲" : "▼"}
-    </span>
-  </button>
-
-  {userMenuOpen && (
-    <div className="user-menu-dropdown">
-      <div className="user-menu-header">
-        <strong>
-          {profile?.fullName || "Currist User"}
-        </strong>
-
-        <span>{userEmail}</span>
-      </div>
-
-      <div className="user-menu-badges">
-        <span className="plan-badge">
-          {(profile?.plan || "basic").toUpperCase()}
-        </span>
-
-        {profile?.role === "admin" && (
-          <span className="admin-badge">
-            ADMIN
-          </span>
-        )}
-      </div>
-
-      <div className="user-menu-divider" />
-
-      <Link
-        href="/profile"
-        className="user-menu-item"
-        onClick={() => setUserMenuOpen(false)}
-      >
-        Profile
-      </Link>
-
-      <Link
-        href="/tool"
-        className="user-menu-item"
-        onClick={() => setUserMenuOpen(false)}
-      >
-        My Workspace
-      </Link>
-
-      {profile?.role === "admin" && (
-        <Link
-          href="/admin"
-          className="user-menu-item admin-menu-item"
-          onClick={() => setUserMenuOpen(false)}
-        >
-          Admin Dashboard
-        </Link>
-      )}
-
-      <div className="user-menu-divider" />
-
-      <button
-        type="button"
-        className="user-menu-item logout-menu-item"
-        onClick={handleLogout}
-      >
-        Log out
-      </button>
-    </div>
-  )}
-</div>
-
-  </div>
-</header>
+      <Header logoHref="/" />
 
       <div className="dashboard-content">
         <section className="hero-section">
@@ -344,7 +245,7 @@ export default function DashboardPage() {
 
               <Link href="/tool" className="secondary-button">
                 Open Workspace
-                <ArrowIcon />
+                <ArrowIcon />a
               </Link>
             </div>
 
@@ -645,6 +546,9 @@ export default function DashboardPage() {
   z-index: 1000;
   width: 260px;
   padding: 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch; 
   border: 1px solid #334155;
   border-radius: 12px;
   background: #0f172a;

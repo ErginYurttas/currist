@@ -13,6 +13,7 @@ import {
 import { useRouter } from "next/navigation";
 import CurristLogo from "../components/CurristLogo";
 import { theme } from "../design/theme";
+import Header from "../components/Header";
 
 import {
   StructureType,
@@ -179,6 +180,51 @@ const summaryCardStyle: React.CSSProperties = {
   borderRadius: 12,
   padding: 14,
   minHeight: 92,
+};
+
+const workspaceToolsGridStyle: React.CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
+  gap: 14,
+  width: "100%",
+  alignItems: "start",
+};
+
+const workspaceToolCardStyle: React.CSSProperties = {
+  minWidth: 0,
+  boxSizing: "border-box",
+  background: theme.colors.surface,
+  border: `1px solid ${theme.colors.borderSoft}`,
+  borderRadius: theme.radius.card,
+  overflow: "hidden",
+};
+
+const workspaceToolHeaderStyle: React.CSSProperties = {
+  width: "100%",
+  minHeight: 52,
+  padding: "12px 16px",
+  border: "none",
+  background: "transparent",
+  color: theme.colors.text,
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  gap: 12,
+  textAlign: "left",
+  cursor: "pointer",
+  fontFamily: "inherit",
+};
+
+const workspaceToolContentStyle: React.CSSProperties = {
+  padding: "0 16px 16px",
+  borderTop: `1px solid ${theme.colors.borderSoft}`,
+};
+
+const compactFormGridStyle: React.CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+  gap: 10,
+  paddingTop: 16,
 };
 
 function formatNumber(value: number, digits = 2) {
@@ -696,7 +742,35 @@ useEffect(() => {
   
   const [analyzerName, setAnalyzerName] = useState("");
   const [selectedAnalyzerPanelId, setSelectedAnalyzerPanelId] = useState<number | null>(null);
+  const [projectToolsOpen, setProjectToolsOpen] =
+  useState(true);
 
+  const [panelToolsOpen, setPanelToolsOpen] =
+  useState(false);
+
+  const [loadToolsOpen, setLoadToolsOpen] =
+  useState(false);
+  const toggleWorkspaceTool = (
+  tool: "project" | "panel" | "load"
+) => {
+  if (tool === "project") {
+    setProjectToolsOpen((current) => !current);
+    setPanelToolsOpen(false);
+    setLoadToolsOpen(false);
+    return;
+  }
+
+  if (tool === "panel") {
+    setPanelToolsOpen((current) => !current);
+    setProjectToolsOpen(false);
+    setLoadToolsOpen(false);
+    return;
+  }
+
+  setLoadToolsOpen((current) => !current);
+  setProjectToolsOpen(false);
+  setPanelToolsOpen(false);
+};
   const selectedNode = useMemo(
     () => structures.find((s) => s.id === selectedParent),
     [structures, selectedParent]
@@ -5263,7 +5337,7 @@ const unassignedAnalyzerLoads = analyzerAssignableItems.filter(
   return (
   <div
     style={{
-      padding: "0 20px 160px",
+      padding: "250px 20px 160px",
       background: theme.colors.background,
       minHeight: "calc(100vh + 240px)",
       color: theme.colors.text,
@@ -5272,364 +5346,25 @@ const unassignedAnalyzerLoads = analyzerAssignableItems.filter(
   >
     <div
   style={{
-    width: "calc(100% + 40px)",
-    height: theme.layout.headerHeight,
-    margin: "0 -20px",
-    padding: `0 ${theme.layout.pageHorizontalPadding}px`,
-    boxSizing: "border-box",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: 20,
-    borderBottom: `1px solid ${theme.colors.border}`,
+    position: "fixed",
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 1000,
     background: theme.colors.background,
   }}
 >
-      <CurristLogo href="/dashboard" />
-
-<div
-  style={{
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "flex-end",
-    gap: 12,
-  }}
->
-  <div style={{ position: "relative" }}>
-  <button
-    type="button"
-    onClick={() => {
-      setLanguageMenuOpen((currentValue) => !currentValue);
-      setUserMenuOpen(false);
-    }}
-    aria-expanded={languageMenuOpen}
-    style={{
-      display: "flex",
-      alignItems: "center",
-      gap: 8,
-      minHeight: 40,
-      padding: "0 12px",
-      border: `1px solid ${theme.colors.borderSoft}`,
-      borderRadius: 10,
-      background: languageMenuOpen
-        ? theme.colors.surfaceSoft
-        : theme.colors.background,
-      color: theme.colors.text,
-      cursor: "pointer",
-      fontSize: 13,
-      fontWeight: 700,
-    }}
-  >
-    🇬🇧 EN {languageMenuOpen ? "▲" : "▼"}
-  </button>
-
-  {languageMenuOpen && (
-    <div
-      style={{
-        position: "absolute",
-        top: "calc(100% + 8px)",
-        right: 0,
-        zIndex: 16000,
-        width: 210,
-        padding: 6,
-        border: `1px solid ${theme.colors.borderSoft}`,
-        borderRadius: 10,
-        background: theme.colors.background,
-        boxShadow: "0 18px 45px rgba(0, 0, 0, 0.4)",
-      }}
-    >
-      <button
-        type="button"
-        onClick={() => setLanguageMenuOpen(false)}
-        style={{
-          width: "100%",
-          padding: "9px 10px",
-          border: "none",
-          borderRadius: 8,
-          background: "transparent",
-          color: theme.colors.text,
-          textAlign: "left",
-          cursor: "pointer",
-        }}
-      >
-        🇬🇧 EN
-      </button>
-
-      {[
-        ["🇩🇪", "DE"],
-        ["🇫🇷", "FR"],
-        ["🇪🇸", "ES"],
-        ["🇹🇷", "TR"],
-        ["🇷🇺", "RU"],
-        ["🇨🇳", "中文"],
-      ].map(([flag, label]) => (
-        <button
-          key={label}
-          type="button"
-          disabled
-          style={{
-            width: "100%",
-            padding: "9px 10px",
-            border: "none",
-            borderRadius: 8,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            background: "transparent",
-            color: theme.colors.textMuted,
-            textAlign: "left",
-            cursor: "not-allowed",
-          }}
-        >
-          <span>
-            {flag} {label}
-          </span>
-
-          <span style={{ fontSize: 11 }}>
-            Coming Soon
-          </span>
-        </button>
-      ))}
-    </div>
-  )}
+  <Header logoHref="/dashboard" />
 </div>
 
-  {authReady && currentUser && (
-  <div style={{ position: "relative" }}>
-    <button
-      type="button"
-      onClick={() => {
-      setUserMenuOpen((currentValue) => !currentValue);
-      setLanguageMenuOpen(false);
-      }}
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: 9,
-        minHeight: 40,
-        padding: "5px 10px 5px 6px",
-        borderRadius: 10,
-        border: "1px solid #334155",
-        background: userMenuOpen ? "#1e293b" : "#0f172a",
-        color: "white",
-        cursor: "pointer",
-      }}
-    >
-      <div
-        style={{
-          width: 30,
-          height: 30,
-          flexShrink: 0,
-          borderRadius: "50%",
-          display: "grid",
-          placeItems: "center",
-          background: "#1e40af",
-          fontSize: 13,
-          fontWeight: 800,
-        }}
-      >
-        {(currentUser.email?.[0] || "U").toUpperCase()}
-      </div>
-
-      <span
-        style={{
-          maxWidth: 150,
-          overflow: "hidden",
-          textOverflow: "ellipsis",
-          whiteSpace: "nowrap",
-          fontSize: 13,
-          fontWeight: 700,
-        }}
-      >
-        {userProfile?.fullName || "Signed in"}
-      </span>
-
-      <span
-        style={{
-          color: "#94a3b8",
-          fontSize: 10,
-        }}
-      >
-        {userMenuOpen ? "▲" : "▼"}
-      </span>
-    </button>
-
-    {userMenuOpen && (
-      <div
-        style={{
-          position: "absolute",
-          top: "calc(100% + 8px)",
-          right: 0,
-          zIndex: 16000,
-          width: 260,
-          padding: 10,
-          borderRadius: 12,
-          border: "1px solid #334155",
-          background: "#0f172a",
-          color: "white",
-          boxShadow: "0 18px 45px rgba(0, 0, 0, 0.4)",
-        }}
-      >
-        <div style={{ padding: "6px 8px 10px" }}>
-          <div
-            style={{
-              fontSize: 13,
-              fontWeight: 800,
-            }}
-          >
-            {userProfile?.fullName || "Signed in"}
-          </div>
-
-          <div
-            style={{
-              marginTop: 4,
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              whiteSpace: "nowrap",
-              color: "#94a3b8",
-              fontSize: 11,
-            }}
-          >
-            {currentUser.email}
-          </div>
-        </div>
-
-        <div
-          style={{
-            display: "flex",
-            gap: 7,
-            padding: "0 8px 10px",
-          }}
-        >
-          <span
-            style={{
-              padding: "3px 8px",
-              borderRadius: 999,
-              background: "#1e3a8a",
-              color: "#bfdbfe",
-              fontSize: 10,
-              fontWeight: 800,
-            }}
-          >
-            {userProfileLoading
-              ? "..."
-              : (userProfile?.plan || "basic").toUpperCase()}
-          </span>
-
-          {isAdmin && (
-            <span
-              style={{
-                padding: "3px 8px",
-                borderRadius: 999,
-                background: "#7c2d12",
-                color: "#fed7aa",
-                fontSize: 10,
-                fontWeight: 800,
-              }}
-            >
-              ADMIN
-            </span>
-          )}
-        </div>
-
-        <div
-          style={{
-            height: 1,
-            marginBottom: 6,
-            background: "#334155",
-          }}
-        />
-
-        <button
-          type="button"
-          onClick={() => {
-            setMyProjectsOpen(true);
-            setUserMenuOpen(false);
-          }}
-          style={{
-            width: "100%",
-            padding: "9px 10px",
-            border: "none",
-            borderRadius: 8,
-            background: "transparent",
-            color: "white",
-            textAlign: "left",
-            cursor: "pointer",
-          }}
-        >
-          My Projects
-        </button>
-
-        {isAdmin && (
-          <button
-            type="button"
-            onClick={() => {
-              setUserMenuOpen(false);
-              window.location.href = "/admin";
-            }}
-            style={{
-              width: "100%",
-              padding: "9px 10px",
-              border: "none",
-              borderRadius: 8,
-              background: "transparent",
-              color: "#fdba74",
-              textAlign: "left",
-              cursor: "pointer",
-              fontWeight: 700,
-            }}
-          >
-            Admin Dashboard
-          </button>
-        )}
-
-        <div
-          style={{
-            height: 1,
-            margin: "6px 0",
-            background: "#334155",
-          }}
-        />
-
-        <button
-          type="button"
-          onClick={() => {
-            setUserMenuOpen(false);
-            handleLogout();
-          }}
-          style={{
-            width: "100%",
-            padding: "9px 10px",
-            border: "none",
-            borderRadius: 8,
-            background: "transparent",
-            color: "#fca5a5",
-            textAlign: "left",
-            cursor: "pointer",
-            fontWeight: 700,
-          }}
-        >
-          Log out
-        </button>
-      </div>
-    )}
-  </div>
-)}
-
-</div>
-    </div>
-
-    <div style={{ paddingTop: 78 }}>
-
-    </div>
-      
-
-      {/* SUMMARY BAR */}
+{/* SUMMARY BAR */}
 <div
   style={{
-    position: "sticky",
-    top: 0,
-    zIndex: 999,
+    position: "fixed",
+top: 68,
+left: 20,
+right: 20,
+zIndex: 999,
     background: "#0f172a",
     padding: "12px 20px 14px 20px",
     borderBottom: "1px solid #1e293b",
@@ -5801,28 +5536,71 @@ const unassignedAnalyzerLoads = analyzerAssignableItems.filter(
 </div>
 
 
-      <div style={{ display: "flex", gap: 20, alignItems: "flex-start" }}>
-        <div
-          style={{
-          width: "32%",
-          background: "#111827",
-          border: "1px solid #334155",
-          borderRadius: 12,
-          padding: 16,
-          minHeight: 500,
-          maxHeight: "calc(100vh - 180px)",
-          overflowY: "auto",
-        }}
-        >
-          
+      <div
+  style={{
+    display: "flex",
+    flexDirection: "column",
+    gap: 16,
+    alignItems: "stretch",
+    width: "100%",
+    padding: "16px 20px 20px",
+    boxSizing: "border-box",
+  }}
+>
+        <div style={workspaceToolsGridStyle}>
+  <div style={{ display: "contents" }}>
 
-          <div
-          style={{
-          display: "flex",
-          flexDirection: "column",
-          gap: 10,
-          }}
-          >
+    <details
+  name="workspace-tools"
+  open
+  style={{
+    ...workspaceToolCardStyle,
+    alignSelf: "start",
+  }}
+>
+  <summary
+    style={{
+      ...workspaceToolHeaderStyle,
+      listStyle: "none",
+      userSelect: "none",
+    }}
+  >
+    <span>
+      <span
+        style={{
+          display: "block",
+          fontSize: 15,
+          fontWeight: 800,
+        }}
+      >
+        Project Structure
+      </span>
+
+      <span
+        style={{
+          display: "block",
+          marginTop: 3,
+          color: theme.colors.textSecondary,
+          fontSize: 12,
+          fontWeight: 500,
+        }}
+      >
+        {selectedNode
+          ? `Selected: ${selectedNode.name}`
+          : "Create and manage locations"}
+      </span>
+    </span>
+
+    <span style={{ fontSize: 18 }}>▾</span>
+  </summary>
+
+  <div
+    style={{
+      ...compactFormGridStyle,
+      padding: 16,
+      borderTop: `1px solid ${theme.colors.borderSoft}`,
+    }}
+  >
             <select
               style={fieldStyle}
               value={type}
@@ -5919,7 +5697,7 @@ const unassignedAnalyzerLoads = analyzerAssignableItems.filter(
               Add Another Building
             </button>
 
-            <button
+                        <button
               onClick={handleEditSelected}
               disabled={!selectedNode}
               style={{
@@ -5943,22 +5721,59 @@ const unassignedAnalyzerLoads = analyzerAssignableItems.filter(
               Delete Selected
             </button>
           </div>
+        </details>
 
-          <div
-            style={{
-              marginTop: 20,
-              borderTop: "1px solid #334155",
-              paddingTop: 16,
-            }}
-          >
-<div
+
+  
+<details
+  name="workspace-tools"
   style={{
-    marginTop: 20,
-    borderTop: "1px solid #334155",
-    paddingTop: 16,
+    ...workspaceToolCardStyle,
+    alignSelf: "start",
   }}
 >
-  <h3 style={{ marginTop: 0 }}>Create Panel</h3>
+  <summary
+    style={{
+      ...workspaceToolHeaderStyle,
+      listStyle: "none",
+      userSelect: "none",
+    }}
+  >
+    <span>
+      <span
+        style={{
+          display: "block",
+          fontSize: 15,
+          fontWeight: 800,
+        }}
+      >
+        Create Panel
+      </span>
+
+      <span
+        style={{
+          display: "block",
+          marginTop: 3,
+          color: theme.colors.textSecondary,
+          fontSize: 12,
+          fontWeight: 500,
+        }}
+      >
+        {canAddPanel
+          ? `Selected: ${selectedNode?.name || "-"}`
+          : "Select a structure node"}
+      </span>
+    </span>
+
+    <span style={{ fontSize: 18 }}>▾</span>
+  </summary>
+
+  <div
+    style={{
+      padding: 16,
+      borderTop: `1px solid ${theme.colors.borderSoft}`,
+    }}
+  >
 
   <div
     style={{
@@ -6115,9 +5930,59 @@ const unassignedAnalyzerLoads = analyzerAssignableItems.filter(
       ? `Selected node for panel: ${selectedNode?.name || "-"}`
       : "Select a node to add panel"}
   </p>
-</div>
+    </div>
+</details>
 
-            <h3 style={{ marginTop: 0 }}>Create Load</h3>
+
+            <details
+  name="workspace-tools"
+  style={{
+    ...workspaceToolCardStyle,
+    alignSelf: "start",
+  }}
+>
+  <summary
+    style={{
+      ...workspaceToolHeaderStyle,
+      listStyle: "none",
+      userSelect: "none",
+    }}
+  >
+    <span>
+      <span
+        style={{
+          display: "block",
+          fontSize: 15,
+          fontWeight: 800,
+        }}
+      >
+        Create Load
+      </span>
+
+      <span
+        style={{
+          display: "block",
+          marginTop: 3,
+          color: theme.colors.textSecondary,
+          fontSize: 12,
+          fontWeight: 500,
+        }}
+      >
+        {canAddLoad
+          ? `Selected room: ${selectedNode?.name || "-"}`
+          : "Select a room"}
+      </span>
+    </span>
+
+    <span style={{ fontSize: 18 }}>▾</span>
+  </summary>
+
+  <div
+    style={{
+      padding: 16,
+      borderTop: `1px solid ${theme.colors.borderSoft}`,
+    }}
+  >
 
             <div
               style={{
@@ -6374,37 +6239,60 @@ const unassignedAnalyzerLoads = analyzerAssignableItems.filter(
               </button>
             </div>
 
-            <p style={{ marginBottom: 0, opacity: 0.8, marginTop: 12 }}>
-              {canAddLoad
-                ? `Selected room: ${selectedNode.name}`
-                : "Select a room to add load"}
-            </p>
-          </div>
-        </div>
+                        <p style={{ marginBottom: 0, opacity: 0.8, marginTop: 12 }}>
+  {canAddLoad
+    ? `Selected room: ${selectedNode?.name || "-"}`
+    : "Select a room to add load"}
+</p>
 
-  <div style={{ width: "68%" }}>
+  </div>
+</details>
+
+        </div>
+      </div>
+    </div>
+
+<div
+  style={{
+    width: "100%",
+    minWidth: 0,
+  }}
+>
+
+
   <div
-    style={{
-      background: "#111827",
-      border: "1px solid #334155",
-      borderRadius: 12,
-      padding: 16,
-      minHeight: 500,
-      maxHeight: "calc(100vh - 180px)",
-      overflowY: "auto",
-    }}
-  >
+  style={{
+    width: "100%",
+    minWidth: 0,
+    boxSizing: "border-box",
+    background: theme.colors.surface,
+    border: `1px solid ${theme.colors.borderSoft}`,
+    borderRadius: theme.radius.card,
+    padding: 20,
+    minHeight: 500,
+    overflowX: "auto",
+    overflowY: "visible",
+  }}
+>
     <div
-      style={{
-        display: "flex",
-        justifyContent: "space-between",
-        alignItems: "center",
-        marginBottom: 12,
-      }}
-    >
+  style={{
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    flexWrap: "wrap",
+    gap: 12,
+    marginBottom: 16,
+  }}
+>
       <h3 style={{ margin: 0 }}>Structure Tree</h3>
 
-      <div style={{ display: "flex", gap: 8 }}>
+      <div
+  style={{
+    display: "flex",
+    flexWrap: "wrap",
+    gap: 8,
+  }}
+>
   <input
     id="currist-import-input"
     type="file"
@@ -8000,7 +7888,7 @@ setCopyLoadProjectCodes({});
 )}
 
 
-      </div>
+      
     </div>
   );
 }

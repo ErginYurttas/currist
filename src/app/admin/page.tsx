@@ -9,6 +9,8 @@ import {
   getCurrentUserProfile,
   type UserProfile,
 } from "../lib/profile";
+import Header from "../components/Header";
+import { theme } from "../design/theme";
 
 
 type AdminUser = {
@@ -77,8 +79,8 @@ const [capacityError, setCapacityError] =
         } = await supabase.auth.getUser();
 
         if (userError || !user) {
-          window.location.href = "/";
-          return;
+        window.location.href = "/login";
+        return;
         }
 
         const currentProfile = await getCurrentUserProfile();
@@ -230,15 +232,16 @@ if (capacityRpcError) {
 
   if (loading) {
     return (
-      <main
-        style={{
-          minHeight: "100vh",
-          display: "grid",
-          placeItems: "center",
-          background: "#0f172a",
-          color: "#f8fafc",
-        }}
-      >
+  <main
+    style={{
+      minHeight: "100vh",
+      padding: 0,
+      background: theme.colors.background,
+      color: theme.colors.text,
+      fontFamily: theme.typography.fontFamily,
+    }}
+  >
+    <Header logoHref="/dashboard" />
         Checking admin access...
       </main>
     );
@@ -302,8 +305,8 @@ if (capacityRpcError) {
           <button
             type="button"
             onClick={() => {
-              window.location.href = "/";
-            }}
+  window.location.href = "/dashboard";
+}}
             style={{
               border: "1px solid #475569",
               borderRadius: 8,
@@ -314,92 +317,127 @@ if (capacityRpcError) {
               fontWeight: 700,
             }}
           >
-            Back to Currist
+            Back to Dashboard
           </button>
         </div>
       </main>
     );
   }
 
-  return (
-    <main
+ return (
+  <main
+    style={{
+      minHeight: "100vh",
+      padding: 0,
+      background: theme.colors.background,
+      color: theme.colors.text,
+      fontFamily: theme.typography.fontFamily,
+    }}
+  >
+    <Header logoHref="/dashboard" />
+
+    <div
       style={{
-        minHeight: "100vh",
-        padding: 32,
-        background: "#0f172a",
-        color: "#f8fafc",
+        width: "min(1200px, calc(100% - 40px))",
+        margin: "0 auto",
+        padding: "32px 0 60px",
       }}
     >
-      <div
+        
+
+        <section
+  style={{
+    position: "relative",
+    overflow: "hidden",
+    marginBottom: 28,
+    padding: "32px 34px",
+    border: `1px solid ${theme.colors.borderSoft}`,
+    borderRadius: 20,
+    background:
+      "linear-gradient(130deg, rgba(79, 195, 247, 0.08), transparent 46%), #111c32",
+    boxShadow: theme.shadow.card,
+  }}
+>
+  <div
+    style={{
+      position: "relative",
+      zIndex: 1,
+    }}
+  >
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        flexWrap: "wrap",
+        gap: 10,
+      }}
+    >
+      <span
         style={{
-          maxWidth: 1200,
-          margin: "0 auto",
+          color: theme.colors.primary,
+          fontSize: 11,
+          fontWeight: 800,
+          letterSpacing: 1.4,
+          textTransform: "uppercase",
         }}
       >
-        <button
-          type="button"
-          onClick={() => {
-            window.location.href = "/";
-          }}
-          style={{
-            marginBottom: 24,
-            border: "1px solid #475569",
-            borderRadius: 8,
-            padding: "8px 12px",
-            background: "#1e293b",
-            color: "#f8fafc",
-            cursor: "pointer",
-          }}
-        >
-          ← Back to Currist
-        </button>
+        Administration
+      </span>
 
-        <div
-          style={{
-            marginBottom: 28,
-          }}
-        >
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 10,
-              marginBottom: 8,
-            }}
-          >
-            <h1
-              style={{
-                margin: 0,
-                fontSize: 30,
-              }}
-            >
-              Admin Dashboard
-            </h1>
+      <span
+        style={{
+          padding: "4px 9px",
+          border: "1px solid rgba(245, 158, 11, 0.28)",
+          borderRadius: theme.radius.pill,
+          background: "rgba(245, 158, 11, 0.1)",
+          color: "#fcd34d",
+          fontSize: 10,
+          fontWeight: 800,
+        }}
+      >
+        ADMIN
+      </span>
+    </div>
 
-            <span
-              style={{
-                padding: "3px 8px",
-                borderRadius: 999,
-                background: "#78350f",
-                color: "#fef3c7",
-                fontSize: 11,
-                fontWeight: 800,
-                letterSpacing: 0.6,
-              }}
-            >
-              ADMIN
-            </span>
-          </div>
+    <h1
+      style={{
+        margin: "12px 0 0",
+        color: theme.colors.text,
+        fontSize: "clamp(28px, 4vw, 42px)",
+        lineHeight: 1.1,
+        letterSpacing: "-0.03em",
+      }}
+    >
+      Admin Dashboard
+    </h1>
 
-          <p
-            style={{
-              margin: 0,
-              color: "#94a3b8",
-            }}
-          >
-            Signed in as {profile.fullName || "Administrator"}
-          </p>
-        </div>
+    <p
+      style={{
+        maxWidth: 680,
+        margin: "14px 0 0",
+        color: theme.colors.textSecondary,
+        fontSize: 14,
+        lineHeight: 1.7,
+      }}
+    >
+      Monitor Currist users, projects, account verification and system
+      capacity from one administrative workspace.
+    </p>
+
+    <div
+      style={{
+        marginTop: 18,
+        color: "#cbd5e1",
+        fontSize: 12,
+      }}
+    >
+      Signed in as{" "}
+      <strong>
+        {profile.fullName || "Administrator"}
+      </strong>
+    </div>
+  </div>
+</section>
 
             <div
   style={{

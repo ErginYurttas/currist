@@ -5,6 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import CurristLogo from "./components/CurristLogo";
 import { theme } from "./design/theme";
+import Header from "./components/Header";
 
 
 
@@ -37,126 +38,19 @@ const [languageMenuOpen, setLanguageMenuOpen] = useState(false);
 const [curristJourneyTab, setCurristJourneyTab] = useState<
   "available" | "development" | "vision" | "info"
 >("available");
+const [expandedFeature, setExpandedFeature] =
+  useState<string | null>(null);
+
   return (
     <main
-  style={{
-    minHeight: "100vh",
-    background: theme.colors.background,
-    color: theme.colors.text,
-    fontFamily: theme.typography.fontFamily,
-  }}
->
-      <header
-  style={{
-    height: theme.layout.headerHeight,
-    padding: `0 ${theme.layout.pageHorizontalPadding}px`,
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-    borderBottom: `1px solid ${theme.colors.border}`,
-  }}
->
-        <CurristLogo href="/" />
-
-        
-  <div
-  style={{
-    display: "flex",
-    alignItems: "center",
-    gap: 10,
-  }}
->
-  <div style={{ position: "relative" }}>
-    <button
-  type="button"
-  onClick={() => setLanguageMenuOpen((open) => !open)}
-  style={{
-    display: "flex",
-    alignItems: "center",
-    gap: 8,
-    minHeight: 40,
-    padding: "0 12px",
-    border: `1px solid ${theme.colors.borderSoft}`,
-    borderRadius: 10,
-    background: languageMenuOpen
-  ? theme.colors.surfaceSoft
-  : theme.colors.background,
-    color: theme.colors.text,
-    cursor: "pointer",
-    fontSize: 13,
-    fontWeight: 700,
-  }}
->
-  🇬🇧 EN {languageMenuOpen ? "▲" : "▼"}
-</button>
-
-    {languageMenuOpen && (
-  <div
-    style={{
-      position: "absolute",
-      top: "calc(100% + 8px)",
-      right: 0,
-      width: 210,
-      padding: 6,
-      borderRadius: 10,
-      border: `1px solid ${theme.colors.borderSoft}`,
-      background: theme.colors.background,
-      boxShadow: "0 18px 45px rgba(0,0,0,.4)",
-      zIndex: 100,
-    }}
-  >
-    <button
-      type="button"
-      onClick={() => setLanguageMenuOpen(false)}
-      style={languageButtonStyle}
+      style={{
+        minHeight: "100vh",
+        background: theme.colors.background,
+        color: theme.colors.text,
+        fontFamily: theme.typography.fontFamily,
+      }}
     >
-      🇬🇧 EN
-    </button>
-
-    <button type="button" disabled style={disabledLanguageButtonStyle}>
-      <span>🇩🇪 DE</span>
-      <span style={{ fontSize: 11 }}>Coming Soon</span>
-    </button>
-
-    <button type="button" disabled style={disabledLanguageButtonStyle}>
-      <span>🇫🇷 FR</span>
-      <span style={{ fontSize: 11 }}>Coming Soon</span>
-    </button>
-
-    <button type="button" disabled style={disabledLanguageButtonStyle}>
-      <span>🇪🇸 ES</span>
-      <span style={{ fontSize: 11 }}>Coming Soon</span>
-    </button>
-
-    <button type="button" disabled style={disabledLanguageButtonStyle}>
-      <span>🇹🇷 TR</span>
-      <span style={{ fontSize: 11 }}>Coming Soon</span>
-    </button>
-
-    <button type="button" disabled style={disabledLanguageButtonStyle}>
-      <span>🇷🇺 RU</span>
-      <span style={{ fontSize: 11 }}>Coming Soon</span>
-    </button>
-
-    <button type="button" disabled style={disabledLanguageButtonStyle}>
-      <span>🇨🇳 中文</span>
-      <span style={{ fontSize: 11 }}>Coming Soon</span>
-    </button>
-  </div>
-)}
-
-  </div>
-
-  <Link href="/login" style={secondaryButtonStyle}>
-  Sign In
-</Link>
-
-  <Link href="/login" style={primaryButtonStyle}>
-  Start Free
-</Link>
-</div>
-        
-      </header>
+      <Header logoHref="/" />
 
       <section
   style={{
@@ -1152,37 +1046,61 @@ const [curristJourneyTab, setCurristJourneyTab] = useState<
             }}
           >
             {[
-              {
-                icon: "🗂️",
-                title: "Project Management",
-                text: "Create, organize and manage electrical projects from a single workspace.",
-              },
-              {
-                icon: "🏢",
-                title: "Structure Management",
-                text: "Build clear project hierarchies for buildings, floors, rooms and technical areas.",
-              },
-              {
-                icon: "⚡",
-                title: "Panel Management",
-                text: "Create distribution panels and maintain their relationships across the project.",
-              },
-              {
-                icon: "💡",
-                title: "Load Management",
-                text: "Add, classify and connect electrical loads to the correct panels and structures.",
-              },
-              {
-                icon: "☁️",
-                title: "Cloud Workspace",
-                text: "Save your work securely and continue your projects from different devices.",
-              },
-              {
-                icon: "📊",
-                title: "Export and Reporting",
-                text: "Prepare organized engineering outputs, schedules and project documentation.",
-              },
-            ].map((feature) => (
+  {
+    icon: "🗂️",
+    title: "Project Management",
+    text: "Create, organize and manage electrical projects from a single workspace.",
+    details: [
+      "Currist keeps each electrical project inside its own structured workspace. Project identity, country, building type, structures, panels and connected loads remain associated with the same project record.",
+      "Saved projects can be reopened from the project dashboard, renamed and continued without rebuilding the project structure from the beginning. This creates a clear separation between different clients, facilities and engineering studies.",
+    ],
+  },
+  {
+  icon: "🏢",
+  title: "Structure Management",
+  text: "Build clear project hierarchies for buildings, floors, rooms and technical areas.",
+  details: [
+    "Projects can be organized through a hierarchy containing buildings, blocks, floors, rooms and other project locations. This allows every electrical component to be placed in the physical area where it belongs.",
+    "The structured hierarchy also makes large projects easier to understand and maintain. Engineers can navigate from the overall project level down to individual rooms, panels and loads while preserving the relationship between each element.",
+  ],
+},
+{
+  icon: "⚡",
+  title: "Panel Management",
+  text: "Create distribution panels and maintain their relationships across the project.",
+  details: [
+    "Currist supports the creation and management of distribution panels such as MCC, SMDB, DB, LP, UPS DB and packaged panels. Panels can be associated with project structures and connected to upstream supply panels.",
+    "Panel information, connected loads, phase configuration, environment, IP rating and analyzer assignments remain part of the project model. Existing panel designs can also be copied or reused where similar electrical arrangements are required.",
+  ],
+},
+{
+  icon: "💡",
+  title: "Load Management",
+  text: "Add, classify and connect electrical loads to the correct panels and structures.",
+  details: [
+    "Electrical loads can be created with their engineering properties and connected to the appropriate distribution panel. Currist preserves the relationship between each load, its location and its supplying panel.",
+    "Load information contributes to installed power, estimated current, phase distribution, power factor and other project summaries. This provides a consistent foundation for reviewing the electrical distribution system as the project grows.",
+  ],
+},
+{
+  icon: "☁️",
+  title: "Cloud Workspace",
+  text: "Save your work securely and continue your projects from different devices.",
+  details: [
+    "Authenticated users can save their projects to their own cloud workspace. Projects are associated with the signed-in account and can be reopened from the Dashboard whenever work needs to continue.",
+    "Cloud storage allows engineers to move between supported computers, tablets and other devices without depending on a single local browser session. Access remains controlled through the user account and project ownership.",
+  ],
+},
+{
+  icon: "📊",
+  title: "Export and Reporting",
+  text: "Prepare organized engineering outputs, schedules and project documentation.",
+  details: [
+    "Currist can convert structured project information into organized engineering outputs. Project summaries, panel schedules, load information, phase analysis and related data can be prepared from the same project model.",
+    "Because reports are generated from connected project data, changes made inside the workspace can be reflected consistently in later exports. This reduces the need to maintain separate and disconnected calculation documents.",
+  ],
+},
+].map((feature) => (
               <div
                 key={feature.title}
                 style={{
@@ -1231,21 +1149,372 @@ const [curristJourneyTab, setCurristJourneyTab] = useState<
                   {feature.text}
                 </p>
 
-                <Link
-                  href="/tool"
-                  style={{
-                    marginTop: 22,
-                    display: "inline-flex",
-                    color: "#4fc3f7",
-                    fontSize: 13,
-                    fontWeight: 800,
-                    textDecoration: "none",
-                  }}
-                >
-                  Learn more →
-                </Link>
+                <button
+  type="button"
+  onClick={() =>
+    setExpandedFeature((currentFeature) =>
+      currentFeature === feature.title
+        ? null
+        : feature.title
+    )
+  }
+  aria-expanded={expandedFeature === feature.title}
+  style={{
+    marginTop: 22,
+    padding: 0,
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 7,
+    border: "none",
+    background: "transparent",
+    color: "#4fc3f7",
+    fontFamily: "inherit",
+    fontSize: 13,
+    fontWeight: 800,
+    cursor: "pointer",
+  }}
+>
+  {expandedFeature === feature.title
+    ? "Show less ↑"
+    : "Learn more →"}
+</button>
+
+{expandedFeature === feature.title && (
+  <div
+    style={{
+      marginTop: 18,
+      paddingTop: 18,
+      borderTop: "1px solid #263449",
+    }}
+  >
+    {feature.details.map((paragraph) => (
+      <p
+        key={paragraph}
+        style={{
+          margin: "0 0 13px",
+          color: "#cbd5e1",
+          fontSize: 14,
+          lineHeight: 1.75,
+        }}
+      >
+        {paragraph}
+      </p>
+    ))}
+  </div>
+)}
+
               </div>
             ))}
+          </div>
+        </div>
+      </section>
+
+            <section
+        id="engineering-capabilities"
+        style={{
+          padding: "90px 20px",
+          borderTop: "1px solid #1e293b",
+          background: "#0b1220",
+        }}
+      >
+        <div
+          style={{
+            width: "min(1280px, 100%)",
+            margin: "0 auto",
+          }}
+        >
+          <div
+            style={{
+              maxWidth: 820,
+              margin: "0 auto",
+              textAlign: "center",
+            }}
+          >
+            <span
+              style={{
+                color: "#4fc3f7",
+                fontSize: 12,
+                fontWeight: 800,
+                letterSpacing: 1.4,
+                textTransform: "uppercase",
+              }}
+            >
+              Engineering Capabilities
+            </span>
+
+            <h2
+              style={{
+                margin: "12px 0 0",
+                color: "#f8fafc",
+                fontSize: "clamp(32px, 5vw, 44px)",
+                lineHeight: 1.15,
+                letterSpacing: -1,
+              }}
+            >
+              Built around real electrical engineering workflows.
+            </h2>
+
+            <p
+              style={{
+                maxWidth: 760,
+                margin: "22px auto 0",
+                color: "#94a3b8",
+                fontSize: 17,
+                lineHeight: 1.8,
+              }}
+            >
+              Currist goes beyond project organization by connecting
+              electrical calculations, load schedules, panel revisions,
+              technical documentation and project delivery within the same
+              engineering workspace.
+            </p>
+          </div>
+
+          <div
+            style={{
+              margin: "34px auto 0",
+              maxWidth: 900,
+              padding: "22px 24px",
+              border: "1px solid #334155",
+              borderRadius: 16,
+              background:
+                "linear-gradient(130deg, rgba(79, 195, 247, 0.08), transparent 60%), #111827",
+              textAlign: "center",
+            }}
+          >
+            <strong
+              style={{
+                display: "block",
+                color: "#f8fafc",
+                fontSize: 21,
+                lineHeight: 1.4,
+              }}
+            >
+              Currist remembers your engineering decisions.
+            </strong>
+
+            <p
+              style={{
+                margin: "10px 0 0",
+                color: "#94a3b8",
+                fontSize: 14,
+                lineHeight: 1.7,
+              }}
+            >
+              Project structures, panel relationships, connected loads,
+              engineering revisions, approval status and technical outputs
+              remain connected to the same project model.
+            </p>
+          </div>
+
+          <div
+            style={{
+              marginTop: 48,
+              display: "grid",
+              gridTemplateColumns:
+                "repeat(auto-fit, minmax(270px, 1fr))",
+              gap: 18,
+            }}
+          >
+            {[
+              {
+                icon: "📋",
+                title: "Intelligent Load Schedules",
+                text: "Generate professional load schedules directly from the live project model instead of maintaining disconnected spreadsheets.",
+                status: "Available",
+                statusType: "available",
+              },
+              {
+                icon: "📚",
+                title: "Equipment Catalogs",
+                text: "Select pumps, fans, AHUs and other supported equipment by manufacturer and model. Electrical properties such as power, voltage and phase configuration can be populated from catalog data.",
+                status: "Advanced",
+                statusType: "advanced",
+              },
+              {
+                icon: "⚖️",
+                title: "Phase Balance",
+                text: "Review phase loading across R, S and T and identify unbalanced electrical distribution while the project is being developed.",
+                status: "Available",
+                statusType: "available",
+              },
+              {
+                icon: "⚡",
+                title: "Electrical Analysis",
+                text: "Review installed power, estimated current, active and reactive power, apparent power, power factor and phase distribution from the connected project data.",
+                status: "Available",
+                statusType: "available",
+              },
+              {
+                icon: "🔌",
+                title: "Cable Sizing Workflows",
+                text: "Use feeder, load and project information as the foundation for cable selection, current-carrying capacity and related engineering checks.",
+                status: "Planned",
+                statusType: "planned",
+              },
+              {
+                icon: "🧮",
+                title: "Reactive Power Compensation",
+                text: "Support capacitor-bank planning and reactive power compensation using the electrical characteristics of the project and its connected loads.",
+                status: "Planned",
+                statusType: "planned",
+              },
+              {
+                icon: "📝",
+                title: "Revision History",
+                text: "Keep engineering notes and panel revisions together and review what changed during the development of the electrical design.",
+                status: "Available",
+                statusType: "available",
+              },
+              {
+                icon: "✅",
+                title: "Approval Workflow",
+                text: "Move panels through engineering review and mark completed designs as approved before manufacturing or final project delivery.",
+                status: "Planned",
+                statusType: "planned",
+              },
+              {
+                icon: "📧",
+                title: "Manufacturer Delivery",
+                text: "Prepare approved panel information for direct delivery to panel manufacturers without rebuilding the same technical package in separate documents.",
+                status: "Planned",
+                statusType: "planned",
+              },
+              {
+                icon: "♻️",
+                title: "Reusable Panel Designs",
+                text: "Copy and reuse existing panel designs in new project locations while preserving connected engineering information and project consistency.",
+                status: "Available",
+                statusType: "available",
+              },
+              {
+                icon: "📊",
+                title: "Professional Engineering Outputs",
+                text: "Prepare load schedules, project summaries, phase analysis, panel information, cable summaries and structured Excel reports from the same project model.",
+                status: "Available",
+                statusType: "available",
+              },
+              {
+                icon: "☁️",
+                title: "Cloud Engineering Workspace",
+                text: "Save, reopen and continue user-specific projects across supported computers, tablets and other devices.",
+                status: "Available",
+                statusType: "available",
+              },
+            ].map((capability) => {
+              const badgeStyle =
+                capability.statusType === "available"
+                  ? {
+                      border: "1px solid rgba(34, 197, 94, 0.28)",
+                      background: "rgba(34, 197, 94, 0.1)",
+                      color: "#86efac",
+                    }
+                  : capability.statusType === "advanced"
+                    ? {
+                        border: "1px solid rgba(168, 85, 247, 0.32)",
+                        background: "rgba(126, 34, 206, 0.14)",
+                        color: "#d8b4fe",
+                      }
+                    : {
+                        border: "1px solid rgba(245, 158, 11, 0.28)",
+                        background: "rgba(245, 158, 11, 0.1)",
+                        color: "#fcd34d",
+                      };
+
+              return (
+                <article
+                  key={capability.title}
+                  style={{
+                    minHeight: 255,
+                    padding: 24,
+                    display: "flex",
+                    flexDirection: "column",
+                    border: "1px solid #263449",
+                    borderRadius: 17,
+                    background: "#111827",
+                  }}
+                >
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "flex-start",
+                      justifyContent: "space-between",
+                      gap: 14,
+                    }}
+                  >
+                    <div
+                      style={{
+                        width: 48,
+                        height: 48,
+                        flexShrink: 0,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        border: "1px solid #334155",
+                        borderRadius: 13,
+                        background: "#172033",
+                        fontSize: 22,
+                      }}
+                    >
+                      {capability.icon}
+                    </div>
+
+                    <span
+                      style={{
+                        ...badgeStyle,
+                        padding: "4px 8px",
+                        borderRadius: 999,
+                        fontSize: 10,
+                        fontWeight: 800,
+                        letterSpacing: 0.4,
+                      }}
+                    >
+                      {capability.status}
+                    </span>
+                  </div>
+
+                  <h3
+                    style={{
+                      margin: "20px 0 0",
+                      color: "#f8fafc",
+                      fontSize: 18,
+                      lineHeight: 1.35,
+                    }}
+                  >
+                    {capability.title}
+                  </h3>
+
+                  <p
+                    style={{
+                      margin: "11px 0 0",
+                      color: "#94a3b8",
+                      fontSize: 14,
+                      lineHeight: 1.75,
+                    }}
+                  >
+                    {capability.text}
+                  </p>
+                </article>
+              );
+            })}
+          </div>
+
+          <div
+            style={{
+              marginTop: 28,
+              padding: "16px 20px",
+              border: "1px solid #334155",
+              borderRadius: 14,
+              background: "#0f172a",
+              color: "#94a3b8",
+              fontSize: 13,
+              lineHeight: 1.7,
+              textAlign: "center",
+            }}
+          >
+            Feature availability may vary by membership plan. During the
+            current development period, registered users may be given access
+            to selected Advanced capabilities for testing and evaluation.
           </div>
         </div>
       </section>
