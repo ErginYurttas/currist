@@ -1887,7 +1887,7 @@ const [expandedFeature, setExpandedFeature] =
                   lineHeight: 1.7,
                 }}
               >
-                Advanced calculation and catalog tools for larger projects.
+                Advanced engineering and automation tools for larger and more complex projects.
               </p>
 
               <div
@@ -1908,6 +1908,7 @@ const [expandedFeature, setExpandedFeature] =
                   "Everything in Standard",
                   "Full engineering catalogs",
                   "Automatic load catalog data",
+                  "Automatic motor feeder & typical circuit generation",
                   "Cable type and cross-section calculations",
                   "Cable length and voltage-drop calculations",
                   "Advanced engineering reports",
