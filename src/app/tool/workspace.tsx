@@ -14,6 +14,15 @@ import { useRouter } from "next/navigation";
 import CurristLogo from "../components/CurristLogo";
 import { theme } from "../design/theme";
 import Header from "../components/Header";
+import {
+  getLoadVoltage,
+  getLoadCurrent,
+} from "../lib/engineering/electrical";
+
+import { findTypicalCircuit } from "../lib/engineering/typical-circuits/selector";
+
+import { loadToProtectionInput } from "../lib/engineering/protection/adapter";
+import { buildProtectionRequirements } from "../lib/engineering/protection/engine";
 
 import {
   StructureType,
@@ -314,6 +323,52 @@ export default function Home() {
   const [cableLengthM, setCableLengthM] = useState("");
   const [cableType, setCableType] = useState<"" | CableType>("");
   const [startingMethod, setStartingMethod] = useState("");
+  const [typicalCircuitCode, setTypicalCircuitCode] = useState("");
+  const [damperMotorType, setDamperMotorType] = useState("");
+  const [fire, setFire] = useState(false);
+  const [frostThermostat, setFrostThermostat] = useState(false);
+  const [limitThermostat, setLimitThermostat] = useState(false);
+  const [maintenanceIsolator, setMaintenanceIsolator] = useState(false);
+  const [emergencyStop, setEmergencyStop] = useState(false);
+  const [doorSwitch, setDoorSwitch] = useState(false);
+
+  const feederSafetyConfig = {
+  fire,
+  frostThermostat,
+  limitThermostat,
+  maintenanceIsolator,
+  emergencyStop,
+  doorSwitch,
+};
+
+const matchedTypicalCircuit =
+  damperMotorType && startingMethod !== "Direct Connection"
+    ? findTypicalCircuit({
+        damperMotorType: damperMotorType as
+          | "No Damper"
+          | "Proportional"
+          | "On/Off - 1"
+          | "On/Off - 2",
+        startingMethod: startingMethod as
+          | "DOL"
+          | "Soft Starter"
+          | "EC - 1 Fan"
+          | "EC - 2 Fan"
+          | "VFD"
+          | "VFD + Bypass",
+        ...feederSafetyConfig,
+      })
+    : undefined;
+
+    const resolvedTypicalCircuitCode =
+  startingMethod === "Direct Connection"
+    ? phaseType === "1P"
+      ? "1P"
+      : phaseType === "3P"
+        ? "3P"
+        : ""
+    : matchedTypicalCircuit?.code || "";
+  
   const [panelName, setPanelName] = useState("");
   const [panelType, setPanelType] = useState<PanelType>("DB");
   const [panelPhaseType, setPanelPhaseType] = useState<PanelPhaseType>("3P");
@@ -1331,6 +1386,7 @@ if (
             cableLengthM: parsedCableLength,
             cableType: cableType || undefined,
             startingMethod: startingMethod || undefined,
+            typicalCircuitCode: resolvedTypicalCircuitCode || undefined,
             updatedAt: Date.now(),
           }
         : load
@@ -1353,6 +1409,15 @@ if (
   setLoadCharacter("");
   setCosPhi("");
   setCableLengthM("");
+  setStartingMethod("");
+  setTypicalCircuitCode("");
+
+  setFire(false);
+  setFrostThermostat(false);
+  setLimitThermostat(false);
+  setMaintenanceIsolator(false);
+  setEmergencyStop(false);
+  setDoorSwitch(false);
   setConnectedPanelId("");
   setIsCopyDraft(false);
 
@@ -1387,6 +1452,7 @@ if (
       cableLengthM: parsedCableLength,
       cableType: cableType || undefined,
       startingMethod: startingMethod || undefined,
+      typicalCircuitCode: resolvedTypicalCircuitCode || undefined,
       
     };
 
@@ -1407,6 +1473,14 @@ if (
     setLoadCharacter("");
     setCosPhi("");
     setCableLengthM("");
+    setStartingMethod("");
+    setTypicalCircuitCode("");
+    setFire(false);
+    setFrostThermostat(false);
+    setLimitThermostat(false);
+    setMaintenanceIsolator(false);
+    setEmergencyStop(false);
+    setDoorSwitch(false);
     setConnectedPanelId("");
     setIsCopyDraft(false);
   };
@@ -1476,6 +1550,7 @@ const handleStartEditLoad = (load: Load) => {
   );
   setCableType(load.cableType || "");
   setStartingMethod(load.startingMethod || "");
+  setTypicalCircuitCode(load.typicalCircuitCode || "");
   setConnectedPanelId(
     load.connectedPanelId !== undefined ? String(load.connectedPanelId) : ""
   );
@@ -1502,6 +1577,19 @@ const handleCopyLoad = (load: Load) => {
 );
 setCableType(load.cableType || "");
 setStartingMethod(load.startingMethod || "");
+setTypicalCircuitCode(load.typicalCircuitCode || "");
+setFire(false);
+setFrostThermostat(false);
+setLimitThermostat(false);
+setMaintenanceIsolator(false);
+setEmergencyStop(false);
+setDoorSwitch(false);
+setFire(false);
+setFrostThermostat(false);
+setLimitThermostat(false);
+setMaintenanceIsolator(false);
+setEmergencyStop(false);
+setDoorSwitch(false);
   setConnectedPanelId(
     load.connectedPanelId !== undefined ? String(load.connectedPanelId) : ""
   );
@@ -1919,20 +2007,6 @@ if (load.phaseType === "3P") {
     #f59e0b ${phaseSegments[0].value + phaseSegments[1].value}% 100%
   )`;
 
-const getVoltage = (load: Load) => {
-  return load.phaseType === "1P" ? 230 : 380;
-};
-
-const getCurrent = (load: Load) => {
-  const totalPowerW = load.powerKw * load.quantity * 1000;
-  const cosValue = load.cosPhi && load.cosPhi > 0 ? load.cosPhi : 1;
-
-  if (load.phaseType === "1P") {
-    return totalPowerW / (230 * cosValue);
-  }
-
-  return totalPowerW / (1.732 * 400 * cosValue);
-};
 
 const getCalculatedCableSection = (
   currentA: number,
@@ -2108,6 +2182,13 @@ const parseLoads = (
       row.StartingMethod === ""
         ? undefined
         : String(row.StartingMethod),
+
+typicalCircuitCode:
+  row.TypicalCircuitCode === undefined ||
+  row.TypicalCircuitCode === ""
+    ? undefined
+    : String(row.TypicalCircuitCode),
+
     cableLengthM:
       row.CableLengthM === ""
         ? undefined
@@ -2868,11 +2949,17 @@ const allImportedPanels: Panel[] = [
     timeZone: "Europe/Istanbul",
   });
 
-  const darkBlue = "FF0F172A";
-  const midBlue = "FF1E40AF";
-  const slate = "FF334155";
-  const lightBg = "FFF8FAFC";
+  const darkBlue = "FF0F172A";       // theme.colors.background
+  const midBlue = "FF17335F";        // theme.colors.backgroundSoft
+  const slate = "FF334155";          // theme.colors.borderSoft
+  const lightBg = "FFF8FAFC";        // print-friendly background
   const white = "FFFFFFFF";
+
+  const oddLoadRowFill = "FFE8F7FD";
+  const evenLoadRowFill = "FFD2EEF9";
+
+  const sectionBlue = "FF162033";     // theme.colors.surfaceSoft
+  const sectionLight = "FFE8F7FD";    // açık Currist tonu
 
   worksheet.views = [{ showGridLines: false }];
 
@@ -3060,6 +3147,7 @@ internalWorksheet.getRow(loadsStartRow + 1).values = [
   "LoadCharacter",
   "Voltage",
   "StartingMethod",
+  "TypicalCircuitCode",
   "CableLengthM",
   "CableType",
   "Brand",
@@ -3098,9 +3186,10 @@ loads.forEach((load, index) => {
     load.phaseLine || "",
     load.cosPhi ?? "",
     load.loadCharacter || "",
-    getVoltage(load),
+    getLoadVoltage(load),
     load.startingMethod || "",
-    load.cableLengthM ?? "",
+    load.typicalCircuitCode || "",
+    load.cableLengthM ?? "",  
     load.cableType || "",
     load.brand || "",
     load.series || "",
@@ -3287,7 +3376,7 @@ worksheet.getCell("A16").alignment = {
 worksheet.getCell("A16").fill = {
   type: "pattern",
   pattern: "solid",
-  fgColor: { argb: slate },
+  fgColor: { argb: sectionBlue },
 };
 
 const rKw = panelSummary?.panelR ?? 0;
@@ -3374,7 +3463,7 @@ worksheet.getCell("G21").value = `${formatNumber(phaseBalanceDeviation, 1)}%`;
   worksheet.getCell(cell).fill = {
     type: "pattern",
     pattern: "solid",
-    fgColor: { argb: slate },
+    fgColor: { argb: sectionBlue },
   };
   worksheet.getCell(cell).alignment = {
     horizontal: "center",
@@ -3387,7 +3476,7 @@ worksheet.getCell("G21").value = `${formatNumber(phaseBalanceDeviation, 1)}%`;
   worksheet.getCell(cell).fill = {
     type: "pattern",
     pattern: "solid",
-    fgColor: { argb: lightBg },
+    fgColor: { argb: sectionLight },
   };
   worksheet.getCell(cell).alignment = {
     horizontal: "center",
@@ -3409,7 +3498,7 @@ worksheet.getCell("A23").alignment = {
 worksheet.getCell("A23").fill = {
   type: "pattern",
   pattern: "solid",
-  fgColor: { argb: slate },
+  fgColor: { argb: sectionBlue },
 };
 
 worksheet.getCell("A25").value = "Average Cos φ";
@@ -3440,7 +3529,7 @@ worksheet.getCell("H25").value = powerFactorType;
   worksheet.getCell("D12").fill = {
     type: "pattern",
     pattern: "solid",
-    fgColor: { argb: lightBg },
+    fgColor: { argb: sectionLight },
   };
 
 const panelLoads = loads.filter(
@@ -3459,7 +3548,7 @@ panelLoads.forEach((load) => {
   if (!load.cableLengthM || !load.cableType) return;
 
   const section = getCalculatedCableSection(
-    getCurrent(load),
+    getLoadCurrent(load),
     load.cableLengthM,
     load.phaseType
   );
@@ -3480,7 +3569,7 @@ childPackagedPanels.forEach((packPanel) => {
   );
 
   const packCurrent = packLoads.reduce(
-    (sum, load) => sum + getCurrent(load),
+    (sum, load) => sum + getLoadCurrent(load),
     0
   );
 
@@ -3515,7 +3604,7 @@ worksheet.getCell(`A${cableSummaryRow}`).alignment = {
 worksheet.getCell(`A${cableSummaryRow}`).fill = {
   type: "pattern",
   pattern: "solid",
-  fgColor: { argb: slate },
+  fgColor: { argb: sectionBlue },
 };
 
 cableSummaryRow += 2;
@@ -3525,7 +3614,7 @@ worksheet.mergeCells(
 );
 
 worksheet.mergeCells(
-  `E${cableSummaryRow}:F${cableSummaryRow}`
+  `E${cableSummaryRow}:H${cableSummaryRow}`
 );
 
 worksheet.getCell(`A${cableSummaryRow}`).value =
@@ -3676,6 +3765,7 @@ const tableHeaders = [
   "Cos φ",
   "Line",
   "Starting Method",
+  "Typical Circuit Code",
   "Analyzer",
   "Connected Panel",
   "Equipment Type",
@@ -3708,6 +3798,35 @@ worksheet.getRow(tableHeaderRow).eachCell((cell) => {
 let lineCounter = 1;
 let currentExcelRow = tableHeaderRow + 1;
 
+const applyLoadRowFill = (
+  startRow: number,
+  endRow: number,
+  lineNumber: number
+) => {
+  const fillColor =
+    lineNumber % 2 === 0
+      ? evenLoadRowFill
+      : oddLoadRowFill;
+
+  for (let rowNumber = startRow; rowNumber <= endRow; rowNumber++) {
+    const row = worksheet.getRow(rowNumber);
+
+    for (
+      let columnNumber = 1;
+      columnNumber <= tableHeaders.length;
+      columnNumber++
+    ) {
+      const cell = row.getCell(columnNumber);
+
+      cell.fill = {
+        type: "pattern",
+        pattern: "solid",
+        fgColor: { argb: fillColor },
+      };
+    }
+  }
+};
+
 const mergeCellsIfNeeded = (
   startRow: number,
   endRow: number,
@@ -3735,13 +3854,14 @@ exportItems.forEach((item) => {
       `L${lineCounter}`,
       load.projectCode,
       load.description,
-      getVoltage(load),
+      getLoadVoltage(load),
       Number((load.powerKw * load.quantity).toFixed(2)),
-      Number(getCurrent(load).toFixed(2)),
+      Number(getLoadCurrent(load).toFixed(2)),
       load.loadCharacter || "",
       load.cosPhi ?? "",
       load.phaseLine || "",
       load.startingMethod || "-",
+      load.typicalCircuitCode || "-",
       getAnalyzerNameForExportLoad(load),
       connectedPanel?.name || panel.name,
       getEquipmentType(load),
@@ -3765,9 +3885,15 @@ exportItems.forEach((item) => {
       load.note || "",
     ];
 
-    lineCounter += 1;
-    currentExcelRow += 1;
-    return;
+    applyLoadRowFill(
+  currentExcelRow,
+  currentExcelRow,
+  lineCounter
+);
+
+lineCounter += 1;
+currentExcelRow += 1;
+return;
   }
 
   const groupedLoads = item.loads;
@@ -3786,7 +3912,7 @@ exportItems.forEach((item) => {
   );
 
   const totalCurrentA = groupedLoads.reduce(
-    (sum, load) => sum + getCurrent(load),
+    (sum, load) => sum + getLoadCurrent(load),
     0
   );
 
@@ -3844,7 +3970,11 @@ exportItems.forEach((item) => {
   mergeCellsIfNeeded(startRow, endRow, 20, "left"); // Room Name
   mergeCellsIfNeeded(startRow, endRow, 21, "left"); // Cable Length (m)
   mergeCellsIfNeeded(startRow, endRow, 22, "left"); // Cable Type
-
+  applyLoadRowFill(
+  startRow,
+  endRow,
+  lineCounter
+);
   lineCounter += 1;
 });
 
@@ -4773,6 +4903,12 @@ const renderPanelDetailModal = (panel: Panel) => {
     (load) => load.connectedPanelId === panel.id
   );
 
+  const protectionRequirements = panelLoads.flatMap((load) =>
+  buildProtectionRequirements(
+    loadToProtectionInput(load)
+  )
+);
+
   const childPackagedPanels = panels.filter(
   (item) =>
     item.panelType === "Packaged Panel" &&
@@ -4916,6 +5052,111 @@ const renderPanelDetailModal = (panel: Panel) => {
         </div>
 
         <hr style={{ margin: "16px 0", borderColor: "#334155" }} />
+
+
+
+<h3>Protection Requirements</h3>
+
+<div style={{ lineHeight: 1.8, fontSize: 14 }}>
+  {panelLoads.length === 0 ? (
+    <div style={{ opacity: 0.7 }}>
+      No connected loads.
+    </div>
+  ) : (
+    panelLoads.map((load) => {
+      const loadRequirements = protectionRequirements.filter(
+        (item) => item.sourceLoadId === String(load.id)
+      );
+
+      return (
+        <div
+          key={load.id}
+          style={{
+            marginBottom: 14,
+            paddingBottom: 12,
+            borderBottom: `1px solid ${theme.colors.borderSoft}`,
+          }}
+        >
+          <div style={{ fontWeight: 700 }}>
+            {load.projectCode}
+          </div>
+
+          <div style={{ opacity: 0.75, marginBottom: 4 }}>
+            {load.startingMethod || "Starting method not defined"}
+          </div>
+
+          {loadRequirements.map((requirement) => {
+  const categoryLabel =
+    requirement.category === "MPCB"
+      ? "Motor Protection Circuit Breaker"
+      : requirement.category === "CONTACTOR"
+      ? "Contactor"
+      : requirement.category === "OVERLOAD_RELAY"
+      ? "Thermal Overload Relay"
+      : requirement.category;
+
+  return (
+  <div
+    key={requirement.id}
+    style={{
+      marginTop: 8,
+    }}
+  >
+    <div>
+      <strong>{categoryLabel}</strong>
+
+      {requirement.utilizationCategory && (
+        <span style={{ opacity: 0.75 }}>
+          {" "}
+          · {requirement.utilizationCategory}
+        </span>
+      )}
+    </div>
+
+    <div
+      style={{
+        marginTop: 2,
+        fontSize: 13,
+        opacity: 0.8,
+      }}
+    >
+      Existing:{" "}
+      {requirement.existingRatedCurrentA !== undefined
+        ? `${formatNumber(requirement.existingRatedCurrentA, 2)} A`
+        : "—"}
+
+      {"  →  "}
+
+      Calculated:{" "}
+      {requirement.calculatedRequiredCurrentA !== undefined
+        ? `${formatNumber(requirement.calculatedRequiredCurrentA, 2)} A`
+        : "—"}
+
+      {"  →  "}
+
+      Recommended:{" "}
+{requirement.recommendedMinCurrentA !== undefined &&
+requirement.recommendedMaxCurrentA !== undefined
+  ? `${formatNumber(requirement.recommendedMinCurrentA, 2)}–${formatNumber(
+      requirement.recommendedMaxCurrentA,
+      2
+    )} A`
+  : requirement.recommendedRatedCurrentA !== undefined
+  ? `${formatNumber(requirement.recommendedRatedCurrentA, 2)} A`
+  : "—"}
+    </div>
+  </div>
+);
+
+})}
+        </div>
+      );
+    })
+  )}
+</div>
+
+<hr style={{ margin: "16px 0", borderColor: "#334155" }} />
+
               
          <h3>Energy Analyzers</h3>
 
@@ -6121,6 +6362,19 @@ zIndex: 999,
               </select>
 
               <select
+              style={fieldStyle}
+              value={damperMotorType}
+              onChange={(e) => setDamperMotorType(e.target.value)}
+              disabled={!canAddLoad}
+              >
+              <option value="">Damper Motor Type</option>
+              <option value="No Damper">No Damper</option>
+              <option value="Proportional">Proportional</option>
+              <option value="On/Off - 1">On/Off - 1 Damper</option>
+              <option value="On/Off - 2">On/Off - 2 Dampers</option>
+              </select>
+
+              <select
                 style={fieldStyle}
                 value={startingMethod}
                 onChange={(e) => setStartingMethod(e.target.value)}
@@ -6128,12 +6382,116 @@ zIndex: 999,
                 >
                 <option value="">Starting Method</option>
                 <option value="DOL">DOL</option>
-                <option value="Star-Delta">Star-Delta</option>
-                <option value="VFD">VFD</option>
                 <option value="Soft Starter">Soft Starter</option>
+                <option value="EC - 1 Fan">EC - 1 Fan</option>
+                <option value="EC - 2 Fan">EC - 2 Fan</option>
+                <option value="VFD">VFD</option>
+                <option value="VFD + Bypass">VFD + Bypass</option>
                 <option value="Direct Connection">Direct Connection</option>
-                <option value="Other">Other</option>
               </select>
+
+                            <div
+                style={{
+                  gridColumn: "1 / -1",
+                  display: "grid",
+                  gap: 8,
+                  padding: 12,
+                  border: `1px solid ${theme.colors.borderSoft}`,
+                  borderRadius: theme.radius.input,
+                  background: theme.colors.surface,
+                }}
+              >
+                <div
+                  style={{
+                    fontSize: 13,
+                    fontWeight: 600,
+                  }}
+                >
+                  Safety / Interlock
+                </div>
+
+                <div
+                  style={{
+                    display: "flex",
+                    flexWrap: "wrap",
+                    gap: 12,
+                  }}
+                >
+                  <label>
+                    <input
+                    type="checkbox"
+                    checked={fire}
+                    onChange={(e) => setFire(e.target.checked)}
+                    disabled={!canAddLoad}
+                    />{" "}
+                    Fire
+                  </label>
+
+                  <label>
+                    <input
+                      type="checkbox"
+                      checked={frostThermostat}
+                      onChange={(e) => setFrostThermostat(e.target.checked)}
+                      disabled={!canAddLoad}
+                    />{" "}
+                    Frost Thermostat
+                  </label>
+
+                  <label>
+                    <input
+                      type="checkbox"
+                      checked={limitThermostat}
+                      onChange={(e) => setLimitThermostat(e.target.checked)}
+                      disabled={!canAddLoad}
+                    />{" "}
+                    Limit Thermostat
+                  </label>
+
+                  <label>
+                    <input
+                      type="checkbox"
+                      checked={maintenanceIsolator}
+                      onChange={(e) => setMaintenanceIsolator(e.target.checked)}
+                      disabled={!canAddLoad}
+                    />{" "}
+                    Maintenance Isolator
+                  </label>
+
+                  <label>
+                    <input
+                      type="checkbox"
+                      checked={emergencyStop}
+                      onChange={(e) => setEmergencyStop(e.target.checked)}
+                      disabled={!canAddLoad}
+                    />{" "}
+                    Emergency Stop
+                  </label>
+
+                  <label>
+                    <input
+                      type="checkbox"
+                      checked={doorSwitch}
+                      onChange={(e) => setDoorSwitch(e.target.checked)}
+                      disabled={!canAddLoad}
+                    />{" "}
+                    Door Switch
+                  </label>
+                </div>
+              </div>
+
+                  <div
+                  style={{
+                  gridColumn: "1 / -1",
+                  padding: 10,
+                  border: `1px solid ${theme.colors.borderSoft}`,
+                  borderRadius: theme.radius.input,
+                  background: theme.colors.surface,
+                  fontSize: 13,
+                  }}
+                  >
+                  <strong>Typical Circuit Code:</strong>{" "}
+                  {resolvedTypicalCircuitCode || "—"}
+              </div>
 
               <input
                 style={fieldStyle}
@@ -6729,298 +7087,127 @@ zIndex: 999,
   }}
 >
 
-
 <h3>✅ COMPLETED FEATURES</h3>
 
-<div><strong>Structure Management</strong></div>
-<div>- Project / Building / Block / Floor / Room Hierarchy</div>
-<div>- Country Selection With Flag Badge</div>
-<div>- Building Type Selection With Icon</div>
-<div>- Alphabetical / Created Date Sorting</div>
-<div>- Create / Edit / Delete Structure Nodes</div>
-<div>- Full Structure Reconstruction From Project Import</div>
-<div>- Automatic Destination Structure Creation For Panel Import</div>
-<div>- Existing Structure Reuse During Panel Import</div>
-<div>- Editable Panel Import Destination</div>
+<div><strong>Project & Structure Management</strong></div>
+<div>- Hierarchical Project, Building, Block, Floor And Room Management</div>
+<div>- Flexible Project Structure Creation, Editing And Reconstruction</div>
 
 <br />
 
-<div><strong>Load Management</strong></div>
-<div>- Create / Edit / Copy / Delete Load</div>
-<div>- Load Detail Popup</div>
-<div>- Catalog-Based Loads</div>
-<div>- Manual Loads</div>
-<div>- 1P / 3P Load Definition</div>
-<div>- R / S / T Phase Line Selection</div>
-<div>- Load Character And Cos φ Selection</div>
-<div>- Starting Method Definition</div>
-<div>- Starting Method Display In Load Detail</div>
-<div>- Cable Length Entry</div>
-<div>- Cable Type Definition</div>
-<div>- Load Note / Internal Comment</div>
-<div>- Connected Panel Assignment</div>
-<div>- Unassigned Load Management</div>
-<div>- Full Load Reconstruction From Project Import</div>
-<div>- Load Reconstruction With New IDs During Panel Import</div>
-<div>- Connected Panel ID Remapping During Panel Import</div>
-<div>- Packaged Panel Load Reconstruction</div>
+<div><strong>Load Engineering</strong></div>
+<div>- Catalog-Based And Custom Load Management</div>
+<div>- Electrical Load Definition And Phase Assignment</div>
+<div>- Automatic Motor Feeder Configuration & Typical Circuit Generation</div>
+<div>- Cable And Connection Data Management</div>
 
 <br />
 
-<div><strong>Panel Management</strong></div>
-<div>- Create / Edit / Copy / Delete Panel</div>
-<div>- Copy Panel With Connected Loads</div>
-<div>- Panel Detail Popup</div>
-<div>- Panel Environment And IP Rating</div>
-<div>- Packaged Panel Logic</div>
-<div>- Packaged Panel Feeders</div>
-<div>- Packaged Panel Supply Cable Definition</div>
-<div>- Upstream Supply Panel Connection</div>
-<div>- Connected Panel Relationships</div>
-<div>- Packaged Panel Supply Phase Definition</div>
-<div>- Full Panel Reconstruction From Project Import</div>
-<div>- Panel Reuse In Another Project / Building / Floor / Room</div>
-<div>- Main Panel ID Remapping During Panel Import</div>
-<div>- Packaged Panel ID Remapping During Panel Import</div>
-<div>- Packaged Panel Supply Relationship Reconstruction</div>
-<div>- Editable Project And Location Information Before Panel Import</div>
+<div><strong>Panel Engineering</strong></div>
+<div>- Panel Creation, Configuration And Reuse</div>
+<div>- Main, Sub And Packaged Panel Relationships</div>
+<div>- Panel Load, Feeder And Supply Architecture</div>
+<div>- Engineering-Oriented Panel Detail View</div>
 
 <br />
 
-<div><strong>Project & Panel Summary</strong></div>
-<div>- Installed Power Calculation</div>
-<div>- Current Calculation</div>
-<div>- Project Load Count</div>
-<div>- Packaged Panel Counted As A Single Project Load / Feeder</div>
-<div>- Packaged Panel Internal Loads Excluded From Project Load Count</div>
-<div>- Panel Outgoing Circuit Count</div>
-<div>- P / Q / S Calculation</div>
-<div>- Weighted Average Cos φ</div>
-<div>- Phase Distribution</div>
-<div>- Phase Balance Analysis</div>
-<div>- Balance Status (Excellent / Good / Attention / Critical)</div>
-<div>- Power Factor Summary</div>
-<div>- Phase Angle (φ) Calculation</div>
-<div>- Power Factor Type Classification (Inductive / Capacitive / Ohmic)</div>
+<div><strong>Electrical Calculations & Analysis</strong></div>
+<div>- Installed Power, Current, P / Q / S And Power Factor Calculations</div>
+<div>- Phase Distribution And Balance Analysis</div>
+<div>- Automatic Protection Requirement Analysis</div>
+<div>- Engineering Calculation Infrastructure For Load And Panel Design</div>
 
 <br />
 
-<div><strong>Energy Analyzer / Meter</strong></div>
-<div>- Multiple Analyzers Per Panel</div>
-<div>- Assign Loads To Analyzer</div>
-<div>- Each Load Can Belong To Only One Analyzer</div>
-<div>- Common Unassigned Loads List</div>
-<div>- Assigned Loads Move Under Related Analyzer</div>
-<div>- Analyzer Badge On Panel Card</div>
-<div>- Packaged Panel Feeder Assignment Support</div>
-<div>- Analyzer Reconstruction From Project Import</div>
-<div>- Analyzer Reconstruction During Panel Import</div>
-<div>- Analyzer To Load ID Remapping</div>
-<div>- Analyzer To Packaged Panel Feeder ID Remapping</div>
+<div><strong>Energy Metering</strong></div>
+<div>- Multi-Analyzer Panel Architecture</div>
+<div>- Load And Feeder Assignment To Energy Analyzers</div>
 
 <br />
 
-<div><strong>Excel Panel Export</strong></div>
+<div><strong>Engineering Reports & Excel Export</strong></div>
 <div>- Professional Panel Report Export</div>
-<div>- Engineering-Style Header</div>
-<div>- Panel-Based Excel File Naming</div>
-<div>- File Name Format: Panel Name - Panel Report.xlsx</div>
-<div>- KPI Dashboard</div>
-<div>- P / Q / S Export</div>
-<div>- Power Factor Summary Export</div>
-<div>- Phase Distribution Export</div>
-<div>- Phase Balance Analysis Export</div>
-<div>- Analyzer Information Export</div>
-<div>- Connected Panel Export</div>
-<div>- Starting Method Export</div>
-<div>- Cable Length Export</div>
-<div>- Cable Type Export</div>
-<div>- Load Notes Export</div>
-<div>- Engineering Load Schedule</div>
-<div>- Created / Revised Date Export</div>
-<div>- Packaged Panel Grouping</div>
-<div>- Multi-Row Packaged Panel Export</div>
-<div>- Analyzer Cell Merge</div>
-<div>- Packaged Panel Feeder Merge Logic</div>
-<div>- Merged Feeder Information For Packaged Panels</div>
-<div>- Cable Summary Report</div>
-<div>- Automatic Cable Section Calculation</div>
-<div>- Voltage Drop-Based Cable Sizing</div>
-<div>- 3% Voltage Drop Information</div>
+<div>- Engineering Load Schedule And Panel Summary</div>
+<div>- Cable Sizing And Cable Summary</div>
+<div>- Typical Circuit And Starting Method Export</div>
+<div>- Structured Engineering Metadata For Project Reconstruction</div>
 
 <br />
 
-<div><strong>Currist Engineering Metadata</strong></div>
-<div>- Hidden Engineering Data Sheet</div>
-<div>- Currist File Validation Marker</div>
-<div>- Export Version Information</div>
-<div>- Project Metadata Table</div>
-<div>- Structure Data Table</div>
-<div>- Panel Data Table</div>
-<div>- Load Data Table</div>
-<div>- Analyzer Data Table</div>
-<div>- Country And Building Type Storage</div>
-<div>- Packaged Panel Relationship Storage</div>
-<div>- Analyzer Connected Item Storage</div>
+<div><strong>Project Import, Recovery & Reuse</strong></div>
+<div>- Full Project Recovery From Currist Engineering Data</div>
+<div>- Panel And Load Reuse Across Projects</div>
+<div>- Automatic Structure And Relationship Reconstruction</div>
+<div>- Intelligent ID And Connection Remapping During Import</div>
 
 <br />
 
-<div><strong>Project Recovery & Restore</strong></div>
-<div>- Restore Entire Project From Currist Excel Export</div>
-<div>- Replace Current Project With Imported Project</div>
-<div>- Project Restore Safety Confirmation</div>
-<div>- Restore Option Availability Check</div>
-<div>- Restore Button Disabled When Full Project Data Is Missing</div>
-<div>- Country Reconstruction</div>
-<div>- Building Type Reconstruction</div>
-<div>- Structure Reconstruction</div>
-<div>- Panel Reconstruction</div>
-<div>- Load Reconstruction</div>
-<div>- Analyzer Reconstruction</div>
-<div>- Packaged Panel Reconstruction</div>
-<div>- Supply Panel Relationship Reconstruction</div>
+<div><strong>Cloud Platform</strong></div>
+<div>- Secure Authentication And User Accounts</div>
+<div>- Cloud Project Save, Open, Rename And Delete</div>
+<div>- User-Based Project Ownership And Data Security</div>
+<div>- Local And Cloud Project Persistence</div>
+<div>- Subscription And User Plan Infrastructure</div>
 
 <br />
 
-<div><strong>Panel Reuse & Import Engine</strong></div>
-<div>- Import Mode Selection Popup</div>
-<div>- Import Panel Only Mode</div>
-<div>- Restore Entire Project Mode</div>
-<div>- Editable Panel Destination Popup</div>
-<div>- Source Project Details Automatically Loaded</div>
-<div>- Project Name Editing Before Import</div>
-<div>- Building Name Editing Before Import</div>
-<div>- Block Editing Before Import</div>
-<div>- Floor Editing Before Import</div>
-<div>- Room Number Editing Before Import</div>
-<div>- Room Description Editing Before Import</div>
-<div>- Country Editing Before Import</div>
-<div>- Building Type Editing Before Import</div>
-<div>- Automatic Destination Structure Creation</div>
-<div>- Existing Destination Structure Detection And Reuse</div>
-<div>- Main Panel Import</div>
-<div>- Main Panel Load Import</div>
-<div>- Packaged Panel Import</div>
-<div>- Packaged Panel Load Import</div>
-<div>- Upstream Supply Panel Mapping</div>
-<div>- Load ID Mapping</div>
-<div>- Panel ID Mapping</div>
-<div>- Analyzer ID Reconstruction</div>
-<div>- Analyzer To Load Mapping</div>
-<div>- Analyzer To Packaged Panel Feeder Mapping</div>
-<div>- Reuse The Same Panel In Different Rooms</div>
-<div>- Reuse Existing Engineering Designs In New Projects</div>
-
-<br />
-
-<div><strong>Authentication & User Account</strong></div>
-<div>- Supabase Authentication Integration</div>
-<div>- Secure User Registration</div>
-<div>- Email Verification</div>
-<div>- Secure Email And Password Login</div>
-<div>- Persistent User Session</div>
-<div>- Automatic Session Restoration</div>
-<div>- Authentication State Monitoring</div>
-<div>- Protected Currist Workspace</div>
-<div>- Signed-In User Information Card</div>
-<div>- User Email Display</div>
-<div>- User Profile Data Foundation</div>
-<div>- User Role Management Foundation</div>
-<div>- Secure Logout</div>
-
-<br />
-
-<div><strong>User Profile & Plan Foundation</strong></div>
-<div>- Supabase Profiles Table</div>
-<div>- Automatic Profile Creation For New Users</div>
-<div>- Existing User Profile Migration</div>
-<div>- Basic / Standard / Advanced Plan Model</div>
-<div>- Subscription Status Foundation</div>
-<div>- User Role Foundation</div>
-<div>- Trial End Date Foundation</div>
-<div>- Last Seen Activity Foundation</div>
-<div>- Profile Row Level Security</div>
-<div>- Current User Profile Loading</div>
-<div>- Active Plan Badge In User Card</div>
-
-<br />
-
-<div><strong>Cloud Project Management</strong></div>
-<div>- Supabase Projects Table</div>
-<div>- User-Based Project Ownership</div>
-<div>- Project Row Level Security</div>
-<div>- Secure Cloud Project Save</div>
-<div>- Local And Cloud Project Save Support</div>
-<div>- My Projects Dashboard</div>
-<div>- User-Specific Project Listing</div>
-<div>- Project Sorting By Last Update</div>
-<div>- Open Project From Cloud</div>
-<div>- Rename Cloud Project</div>
-<div>- Project Name Synchronization With Export Data</div>
-<div>- Delete Cloud Project With Confirmation</div>
-<div>- Continue From Last Project</div>
-<div>- User-Specific Last Project Tracking</div>
-<div>- Automatic Last Project Restoration After Login</div>
-<div>- Cloud Project Persistence After Logout And Refresh</div>
-
-<br />
-
-<div><strong>Project Data Foundation</strong></div>
-<div>- Versioned Currist Project Document</div>
-<div>- Unique Project Document ID</div>
-<div>- Project Created And Updated Timestamps</div>
-<div>- Centralized Project Data Structure</div>
-<div>- Project Data Validation</div>
-<div>- Local Project Storage Foundation</div>
-<div>- Project Manager Service Foundation</div>
-<div>- Cloud-Ready Project Data Architecture</div>
-<div>- Cloud Project Summary Model</div>
-<div>- Cloud Project Load / Save Service</div>
-<div>- Cloud Project Rename / Delete Service</div>
-
-<br />
-
-<div><strong>Production & Deployment</strong></div>
-<div>- Vercel Production Deployment</div>
-<div>- Custom Domain Integration</div>
-<div>- Production Supabase Environment Configuration</div>
-<div>- Secure Environment Variable Management</div>
-<div>- Live Authentication On www.currist.com</div>
-<div>- Live Cloud Project Management On www.currist.com</div>
-
+<div><strong>Production</strong></div>
+<div>- Live Production Deployment</div>
+<div>- Custom Domain And Production Supabase Integration</div>
+<div>- Live Authentication And Cloud Project Management</div>
 <hr style={{ margin: "16px 0", borderColor: "#334155" }} />
 
 <h3>🎯 ROADMAP</h3>
 
-<div><strong>Public Website & Onboarding</strong></div>
-<div>- Public Landing Page Before Login</div>
-<div>- Product Feature Overview</div>
-<div>- Basic / Standard / Advanced Plan Comparison</div>
-<div>- Explore Features Without Creating An Account</div>
-<div>- View Plans Before Registration</div>
-<div>- Sign In / Create Account Entry Points</div>
-<div>- Guided First Project Creation</div>
-<div>- New User Onboarding Flow</div>
+<div><strong>Advanced Electrical Engineering</strong></div>
+<div>- Complete Protection, Cable And Feeder Engineering</div>
+<div>- Upstream Electrical Network Propagation</div>
+<div>- Transformer, Generator, UPS And Compensation Engineering</div>
+<div>- Existing → Calculated → Recommended Engineering Workflow</div>
 
 <br />
 
-<div><strong>Project File System</strong></div>
-<div>- .currist Native Project File</div>
-<div>- Full Project Excel Export</div>
-<div>- PDF Export</div>
-<div>- Automatic Local Backup</div>
-<div>- Project Recovery</div>
-<div>- Import / Export Migration Between Versions</div>
-<div>- Project Duplicate Function</div>
+<div><strong>Panel Design Automation</strong></div>
+<div>- Automatic Component Selection And Feeder Architecture</div>
+<div>- Terminal, Internal Wiring And Physical Panel Modeling</div>
+<div>- Panel Space, Thermal And Enclosure Estimation</div>
+
+<br />
+
+<div><strong>Engineering Documentation</strong></div>
+<div>- Professional PDF Engineering Reports</div>
+<div>- Typical Circuit Documentation</div>
+<div>- Advanced Excel Engineering Reports</div>
+<div>- Native Currist Project File</div>
+
+<br />
+
+<div><strong>Engineering Library & Reuse</strong></div>
+<div>- Reusable Equipment, Load And Panel Library</div>
+<div>- Cross-Project Engineering Design Reuse</div>
+<div>- Manufacturer And Product Data Integration</div>
+
+<br />
+
+<div><strong>Project & Portfolio Management</strong></div>
+<div>- Multi-Project Engineering Workspace</div>
+<div>- Project Duplication, Backup And Version Migration</div>
+<div>- Portfolio-Level Project Visibility</div>
+
+<br />
+
+<div><strong>Public Product Experience</strong></div>
+<div>- Public Website, Plans And Product Presentation</div>
+<div>- Guided Onboarding And First Project Experience</div>
 
 <h3>📦 VERSION INFORMATION</h3>
 
-<div>Version: 0.8.9</div>
+<div>Version: 0.9.0</div>
 <div>Developed By: Ergin Yurttaş</div>
 <div>Contact: erginyurttas@gmail.com</div>
 
 <div style={{ marginTop: 12 }}>
-  <strong>Last Update:</strong> Jul 18, 2026
+  <strong>Last Update:</strong> Aug 30, 2026
 </div>
 
 </div>
@@ -7215,6 +7402,10 @@ zIndex: 999,
       <div><strong>Line:</strong> {selectedLoadDetail.phaseLine || "-"}</div>
       <div><strong>Character:</strong> {selectedLoadDetail.loadCharacter || "-"}</div>
       <div><strong>Starting Method:</strong>{" "}{selectedLoadDetail.startingMethod || "-"}</div>
+
+      <div><strong>Typical Circuit Code:</strong>{" "}{selectedLoadDetail.typicalCircuitCode || "-"}
+      </div>
+
       <div><strong>Cos φ:</strong> {selectedLoadDetail.cosPhi ?? "-"}</div>
       <div><strong>Distance:</strong> {selectedLoadDetail.cableLengthM ?? "-"} m</div>
       <div><strong>Cable Type:</strong> {selectedLoadDetail.cableType || "-"}</div>

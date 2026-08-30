@@ -85,6 +85,7 @@ export type Load = {
   cosPhi?: number;
   cableLengthM?: number;
   startingMethod?: string;
+  typicalCircuitCode?: string;
   note?: string;
   cableType?: CableType;
 };

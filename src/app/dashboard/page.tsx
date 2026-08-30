@@ -75,6 +75,24 @@ function FolderIcon() {
   );
 }
 
+function getBuildingVisual(buildingType?: string | null) {
+  const type = buildingType?.trim().toLowerCase() || "";
+
+  if (type.includes("office")) return "🏢";
+  if (type.includes("hospital")) return "🏥";
+  if (type.includes("hotel")) return "🏨";
+  if (type.includes("factory") || type.includes("industrial")) return "🏭";
+  if (type.includes("school")) return "🏫";
+  if (type.includes("university") || type.includes("campus")) return "🎓";
+  if (type.includes("airport")) return "✈️";
+  if (type.includes("data center") || type.includes("datacenter")) return "🖥️";
+  if (type.includes("residential") || type.includes("apartment")) return "🏠";
+  if (type.includes("shopping") || type.includes("mall")) return "🏬";
+  if (type.includes("warehouse")) return "🏚️";
+
+  return "🏗️";
+}
+
 function WorkspaceIcon() {
   return (
     <svg
@@ -323,30 +341,34 @@ export default function DashboardPage() {
       </Link>
     </div>
   ) : (
-    <div className="projects-list">
-      {projects.map((project) => (
-        <Link
-          key={project.id}
-          href={`/tool?projectId=${project.id}`}
-          className="project-row"
-        >
-          <span className="project-row-icon">
-            <FolderIcon />
+    <div className="project-grid">
+  {projects.map((project) => {
+    const buildingVisual = getBuildingVisual(project.buildingType);
+
+    return (
+      <Link
+        key={project.id}
+        href={`/tool?projectId=${project.id}`}
+        className="project-card"
+      >
+        <div className="project-card-visual" aria-hidden="true">
+          <span>{buildingVisual}</span>
+        </div>
+
+        <div className="project-card-main">
+          <strong>
+            {project.name || "Untitled Project"}
+          </strong>
+
+          <span>
+            {project.buildingType || "Building type not selected"}
+            {" · "}
+            {project.projectCountry || "Country not selected"}
           </span>
+        </div>
 
-          <div className="project-row-main">
-            <strong>
-              {project.name || "Untitled Project"}
-            </strong>
-
-            <span>
-              {project.buildingType || "Building type not selected"}
-              {" · "}
-              {project.projectCountry || "Country not selected"}
-            </span>
-          </div>
-
-          <div className="project-row-date">
+        <div className="project-card-footer">
+          <div className="project-card-date">
             <span>Last updated</span>
 
             <strong>
@@ -361,13 +383,15 @@ export default function DashboardPage() {
             </strong>
           </div>
 
-          <span className="project-row-action">
+          <span className="project-card-action">
             Open
             <ArrowIcon />
           </span>
-        </Link>
-      ))}
-    </div>
+        </div>
+      </Link>
+    );
+  })}
+</div>
   )}
 </section>
 
@@ -1051,6 +1075,131 @@ export default function DashboardPage() {
 }
 
 .projects-list,
+.project-grid {
+  margin-top: 22px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 320px));
+  justify-content: start;
+  gap: 18px;
+}
+
+.project-card {
+  width: 100%;
+  min-height: 300px;
+  padding: 22px;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  border: 1px solid #263449;
+  border-radius: 16px;
+  background: #0f172a;
+  color: #f8fafc;
+  text-decoration: none;
+  transition:
+    transform 160ms ease,
+    border-color 160ms ease,
+    background 160ms ease;
+}
+
+.project-card:hover {
+  transform: translateY(-3px);
+  border-color: #4fc3f7;
+  background: #162033;
+}
+
+.project-card-visual {
+  height: 125px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #334155;
+  border-radius: 13px;
+  background:
+    radial-gradient(
+      circle at 50% 30%,
+      rgba(79, 195, 247, 0.12),
+      transparent 65%
+    ),
+    #111c32;
+}
+
+.project-card-visual span {
+  font-size: 64px;
+  line-height: 1;
+}
+
+.project-card-main {
+  margin-top: 18px;
+  min-width: 0;
+}
+
+.project-card-main strong,
+.project-card-main span {
+  display: block;
+}
+
+.project-card-main strong {
+  overflow: hidden;
+  color: #f8fafc;
+  font-size: 17px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.project-card-main span {
+  margin-top: 7px;
+  overflow: hidden;
+  color: #94a3b8;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.project-card-footer {
+  margin-top: auto;
+  padding-top: 20px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.project-card-date span,
+.project-card-date strong {
+  display: block;
+}
+
+.project-card-date span {
+  color: #64748b;
+  font-size: 10px;
+}
+
+.project-card-date strong {
+  margin-top: 5px;
+  color: #cbd5e1;
+  font-size: 11px;
+}
+
+.project-card-action {
+  min-height: 36px;
+  padding: 0 11px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border: 1px solid #334155;
+  border-radius: 9px;
+  background: #172033;
+  color: #cbd5e1;
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.project-card:hover .project-card-action {
+  border-color: #4fc3f7;
+  color: #ffffff;
+}
 .projects-loading-list {
   margin-top: 18px;
   display: grid;
